@@ -1,0 +1,104 @@
+# WorkOps local/self-host stack: PostgreSQL 16 + the Next.js app.
+#
+# Usage:
+#   1. Create a `.env` next to this file with at least:
+#        POSTGRES_PASSWORD=<strong random>      (required - no default, on purpose)
+#        AUTH_SECRET=<openssl rand -base64 32>  (required)
+#        NEXTAUTH_URL=http://localhost:3000
+#   2. docker compose up -d --build
+#   3. docker compose run --rm tools npm run db:setup      # ONLY initializes an EMPTY database
+#   4. docker compose run --rm tools npm run setup:admin   # first admin; hidden password prompt
+#   5. docker compose run --rm tools npm run setup:verify  # read-only health check
+#   6. Open http://localhost:3000
+#
+# IMPORTANT: all database work goes through the `tools` service, a
+# builder-derived image with full dependencies (npm, tsx, Prisma CLI,
+# scripts/setup). The runtime `app` image is lean and deliberately CANNOT
+# run these scripts — `docker compose exec app npm run ...` does not work.
+# `docker compose run` starts `tools` on demand; `docker compose up` never
+# starts it (it is under `profiles: ["tools"]`).
+#
+# There is intentionally NO demo-data seeding path in this stack;
+# initialization is empty-database-only. See docs/deployment/database.md.
+#
+# The database is NOT published to the host network by default (see db.ports).
+
+name: workops
+
+# Shared runtime environment. `app` (long-running server) and `tools`
+# (one-off database jobs) MUST see the same database and settings, so both
+# consume this single anchor. Add new passthrough variables here.
+x-app-env: &app-env
+  DATABASE_URL: "postgresql://${POSTGRES_USER:-workops}:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env - see docs/deployment/self-hosting.md}@db:5432/${POSTGRES_DB:-workops}?schema=public"
+  AUTH_SECRET: "${AUTH_SECRET:?Set AUTH_SECRET in .env - generate with: openssl rand -base64 32}"
+  NEXTAUTH_URL: ${NEXTAUTH_URL:-http://localhost:3000}
+  AUTH_TRUST_HOST: "true"
+  NODE_ENV: production
+  # Comma-separated internal email domains for communication features.
+  # Fail-closed: unset/empty simply disables those features.
+  COMMUNICATION_INTERNAL_DOMAINS: ${COMMUNICATION_INTERNAL_DOMAINS:-}
+  # Optional integrations pass through; empty means "feature off".
+  AZURE_AD_CLIENT_ID: ${AZURE_AD_CLIENT_ID:-}
+  AZURE_AD_CLIENT_SECRET: ${AZURE_AD_CLIENT_SECRET:-}
+  AZURE_AD_TENANT_ID: ${AZURE_AD_TENANT_ID:-}
+  CRON_SECRET: ${CRON_SECRET:-}
+  RESEND_API_KEY: ${RESEND_API_KEY:-}
+  EMAIL_FROM: ${EMAIL_FROM:-}
+  GLM_API_KEY: ${GLM_API_KEY:-}
+  SABAH_CREDENTIAL_KEY: ${SABAH_CREDENTIAL_KEY:-}
+  WEB_PUSH_VAPID_PUBLIC_KEY: ${WEB_PUSH_VAPID_PUBLIC_KEY:-}
+  WEB_PUSH_VAPID_PRIVATE_KEY: ${WEB_PUSH_VAPID_PRIVATE_KEY:-}
+  WEB_PUSH_VAPID_SUBJECT: ${WEB_PUSH_VAPID_SUBJECT:-}
+
+services:
+  db:
+    image: postgres:16-bookworm
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-workops}
+      # Required with no default: refuses to boot with an implicit password.
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env - see docs/deployment/self-hosting.md}"
+      POSTGRES_DB: ${POSTGRES_DB:-workops}
+    volumes:
+      - workops_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    # Not exposed to the host by default. For one-off admin access from the
+    # host, uncomment - bind to loopback only:
+    # ports:
+    #   - "127.0.0.1:5432:5432"
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment: *app-env
+    ports:
+      - "${APP_PORT:-3000}:3000"
+
+  # One-off database tooling: setup, first admin, migrations, verify.
+  # Built from the `tools` stage (full deps); never serves traffic and is
+  # never started by `docker compose up`. Run it explicitly:
+  #   docker compose run --rm tools npm run db:setup
+  tools:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: tools
+    profiles: ["tools"]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment: *app-env
+    # No ports, no restart policy: short-lived, run on demand.
+
+volumes:
+  workops_pgdata:

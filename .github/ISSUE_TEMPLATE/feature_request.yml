@@ -1,0 +1,36 @@
+name: Feature request
+description: Suggest an idea or improvement for WorkOps
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Describe the department workflow you are trying to support — concrete use cases are far more useful than abstract feature lists.
+  - type: textarea
+    id: problem
+    attributes:
+      label: The problem or workflow
+      description: What are you trying to get done, and what stands in the way today?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: What you would like to happen. Mockups are welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Other approaches, workarounds, or tools you have tried.
+    validations:
+      required: false
+  - type: checkboxes
+    id: contribution
+    attributes:
+      label: Willingness to contribute
+      options:
+        - label: I am willing to help implement this (see CONTRIBUTING.md)
+          required: false

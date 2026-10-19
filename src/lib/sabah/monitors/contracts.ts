@@ -1,0 +1,11 @@
+export type MonitorActor = { id: string; teamId: string };
+export type MonitorScope = { type: "TEAM" | "WORKSPACE"; id: string };
+export type MonitorSource = { id: string; kind: string; label: string; summary: string; updatedAt: string; fingerprint: string; authorized: boolean };
+export type MonitorEvidence = { sourceId: string; snippet: string; fingerprint: string; observedAt: string };
+export type MonitorSuggestion = { id: string; monitorKey: string; fingerprint: string; state: "OPEN" | "SNOOZED" | "DISMISSED"; severity: "INFO" | "WARNING" | "CRITICAL"; title: string; summary: string; evidence: MonitorEvidence[]; scope: MonitorScope; actorId: string; cooldownUntil: string; snoozedUntil?: string; dismissedAt?: string };
+export type MonitorQuery = { scope: "TEAM/WORKSPACE"; maxItems: number; maxSnippetLength: number };
+export type MonitorDefinition = { key: string; name: string; summary: string; query: MonitorQuery; scopePolicy: "TEAM/WORKSPACE"; scheduleClass: "HOURLY"; severity: MonitorSuggestion["severity"]; cooldownMs: number; allowedSuggestions: readonly string[]; evidenceBuilder: (source: MonitorSource, now: Date, maxLength: number) => MonitorEvidence; fingerprint: (evidence: readonly MonitorEvidence[]) => string; buildEvidence: (source: MonitorSource, now: Date) => MonitorEvidence; };
+export type MonitorReader = { authorize: (actor: MonitorActor, scope: MonitorScope) => Promise<boolean>; read: (scope: MonitorScope, limit: number) => Promise<MonitorSource[]> };
+export type MonitorState = { fingerprint: string; lastRunAt: Date };
+export type MonitorStore = { findSuggestion: (monitorKey: string, fingerprint: string, scope: MonitorScope) => Promise<unknown>; getSuggestion: (id: string, scope: MonitorScope) => Promise<unknown>; saveSuggestion: (suggestion: MonitorSuggestion) => Promise<unknown>; getState: (monitorKey: string, scope: MonitorScope) => Promise<MonitorState | undefined>; saveState: (monitorKey: string, scope: MonitorScope, state: MonitorState) => Promise<void>; updateSuggestionState: (id: string, state: "SNOOZED" | "DISMISSED", actor: MonitorActor, scope: MonitorScope) => Promise<unknown> };
+export type MonitorRunContext = { actor: MonitorActor; scope: MonitorScope; reader?: MonitorReader; store: MonitorStore; now: Date; maxMonitors?: number };

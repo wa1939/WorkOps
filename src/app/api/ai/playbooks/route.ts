@@ -1,0 +1,11 @@
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { toSabahActor } from "@/lib/sabah/auth/actor";
+import { createLearningCapabilities, getLearningDependencies, learningContext, learningErrorResponse, playbookProposeSchema, playbookSearchSchema, registerLearningCapabilities } from "@/lib/sabah/capabilities/modules/learning";
+import { capabilityRegistry } from "@/lib/sabah/capabilities/registry";
+import { registerOperationalCapabilities } from "@/lib/sabah/capabilities/register-operational";
+import { registerWorkspaceCapabilitySet } from "@/lib/sabah/capabilities/register-workspace";
+export const dynamic = "force-dynamic";
+const fail = (e: unknown) => { const x = learningErrorResponse(e); return NextResponse.json(x.body, { status: x.status }); };
+export async function GET(request: NextRequest) { const session = await auth(); if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); try { const actor = await toSabahActor(session.user); const input = playbookSearchSchema.parse({ query: request.nextUrl.searchParams.get("query") ?? "", limit: request.nextUrl.searchParams.get("limit") ? Number(request.nextUrl.searchParams.get("limit")) : undefined }); return NextResponse.json(await createLearningCapabilities(getLearningDependencies()).playbookSearch.execute(input, learningContext(actor))); } catch (e) { return fail(e); } }
+export async function POST(request: NextRequest) { const session = await auth(); if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); try { const deps = getLearningDependencies(); registerOperationalCapabilities(capabilityRegistry); registerWorkspaceCapabilitySet(capabilityRegistry); registerLearningCapabilities(capabilityRegistry, deps); const actor = await toSabahActor(session.user); const input = playbookProposeSchema.parse(await request.json()); const capability = createLearningCapabilities(deps).playbookPropose; const context = learningContext(actor); await capability.available(actor); await capability.authorize(input, context); return NextResponse.json(await capability.execute(input, context), { status: 201 }); } catch (e) { return fail(e); } }

@@ -1,0 +1,527 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+    --primary: 262.1 83.3% 57.8%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 220 14.3% 95.9%;
+    --secondary-foreground: 220.9 39.3% 11%;
+    --muted: 220 14.3% 95.9%;
+    --muted-foreground: 220 8.9% 46.1%;
+    --accent: 220 14.3% 95.9%;
+    --accent-foreground: 220.9 39.3% 11%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 220 13% 91%;
+    --input: 220 13% 91%;
+    --ring: 262.1 83.3% 57.8%;
+    --radius: 0.5rem;
+
+    /* Semantic task status colors: soft backgrounds with readable foregrounds. */
+    --status-todo: 215 20% 93%;
+    --status-todo-fg: 215 25% 27%;
+    --status-doing: 214 95% 93%;
+    --status-doing-fg: 221 83% 40%;
+    --status-blocked: 0 93% 94%;
+    --status-blocked-fg: 0 72% 42%;
+    --status-waiting: 48 96% 89%;
+    --status-waiting-fg: 32 81% 29%;
+    --status-done: 142 76% 92%;
+    --status-done-fg: 142 72% 29%;
+    --status-canceled: 220 14% 93%;
+    --status-canceled-fg: 220 9% 38%;
+
+    --priority-low: 142 76% 92%;
+    --priority-low-fg: 142 72% 29%;
+    --priority-medium: 48 96% 89%;
+    --priority-medium-fg: 32 81% 29%;
+    --priority-high: 27 96% 92%;
+    --priority-high-fg: 21 83% 35%;
+    --priority-urgent: 0 93% 94%;
+    --priority-urgent-fg: 0 72% 42%;
+
+    --due-overdue: 0 93% 94%;
+    --due-overdue-fg: 0 72% 42%;
+    --due-today: 38 92% 90%;
+    --due-today-fg: 25 80% 32%;
+    --due-tomorrow: 214 95% 93%;
+    --due-tomorrow-fg: 221 83% 40%;
+    --due-upcoming: 220 14% 93%;
+    --due-upcoming-fg: 220 25% 32%;
+  }
+
+  .dark {
+    --background: 224 71% 4%;
+    --foreground: 213 31% 91%;
+    --card: 224 71% 4%;
+    --card-foreground: 213 31% 91%;
+    --popover: 224 71% 4%;
+    --popover-foreground: 213 31% 91%;
+    --primary: 263.4 70% 50.4%;
+    --primary-foreground: 210 20% 98%;
+    --secondary: 215 27.9% 16.9%;
+    --secondary-foreground: 210 20% 98%;
+    --muted: 215 27.9% 16.9%;
+    --muted-foreground: 217.9 10.6% 64.9%;
+    --accent: 215 27.9% 16.9%;
+    --accent-foreground: 210 20% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 20% 98%;
+    --border: 215 27.9% 16.9%;
+    --input: 215 27.9% 16.9%;
+    --ring: 263.4 70% 50.4%;
+
+    /* Dark-theme semantic colors keep the same hue semantics with stronger text. */
+    --status-todo: 215 28% 20%;
+    --status-todo-fg: 215 20% 85%;
+    --status-doing: 217 70% 22%;
+    --status-doing-fg: 214 95% 82%;
+    --status-blocked: 0 60% 23%;
+    --status-blocked-fg: 0 93% 86%;
+    --status-waiting: 40 55% 22%;
+    --status-waiting-fg: 48 96% 84%;
+    --status-done: 142 50% 20%;
+    --status-done-fg: 142 76% 82%;
+    --status-canceled: 220 14% 22%;
+    --status-canceled-fg: 220 14% 82%;
+
+    --priority-low: 142 50% 20%;
+    --priority-low-fg: 142 76% 82%;
+    --priority-medium: 40 55% 22%;
+    --priority-medium-fg: 48 96% 84%;
+    --priority-high: 24 68% 23%;
+    --priority-high-fg: 27 96% 84%;
+    --priority-urgent: 0 60% 23%;
+    --priority-urgent-fg: 0 93% 86%;
+
+    --due-overdue: 0 60% 23%;
+    --due-overdue-fg: 0 93% 86%;
+    --due-today: 34 70% 23%;
+    --due-today-fg: 38 92% 84%;
+    --due-tomorrow: 217 70% 22%;
+    --due-tomorrow-fg: 214 95% 82%;
+    --due-upcoming: 220 20% 22%;
+    --due-upcoming-fg: 210 20% 86%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--muted-foreground) / 0.5);
+}
+
+/* Kanban board styles */
+.kanban-column {
+  min-height: 200px;
+}
+
+.task-card {
+  @apply transition-all duration-200;
+}
+
+.task-card:hover {
+  @apply shadow-md -translate-y-0.5;
+}
+
+/* Priority badges */
+.priority-urgent {
+  background-color: hsl(var(--priority-urgent));
+  color: hsl(var(--priority-urgent-fg));
+}
+
+.priority-high {
+  background-color: hsl(var(--priority-high));
+  color: hsl(var(--priority-high-fg));
+}
+
+.priority-medium {
+  background-color: hsl(var(--priority-medium));
+  color: hsl(var(--priority-medium-fg));
+}
+
+.priority-low {
+  background-color: hsl(var(--priority-low));
+  color: hsl(var(--priority-low-fg));
+}
+
+/* Status badges */
+.status-todo {
+  background-color: hsl(var(--status-todo));
+  color: hsl(var(--status-todo-fg));
+}
+
+.status-doing {
+  background-color: hsl(var(--status-doing));
+  color: hsl(var(--status-doing-fg));
+}
+
+.status-blocked {
+  background-color: hsl(var(--status-blocked));
+  color: hsl(var(--status-blocked-fg));
+}
+
+.status-waiting {
+  background-color: hsl(var(--status-waiting));
+  color: hsl(var(--status-waiting-fg));
+}
+
+.status-done {
+  background-color: hsl(var(--status-done));
+  color: hsl(var(--status-done-fg));
+}
+
+.status-canceled {
+  background-color: hsl(var(--status-canceled));
+  color: hsl(var(--status-canceled-fg));
+}
+
+/* Due-date badges */
+.due-overdue {
+  background-color: hsl(var(--due-overdue));
+  color: hsl(var(--due-overdue-fg));
+}
+
+.due-today {
+  background-color: hsl(var(--due-today));
+  color: hsl(var(--due-today-fg));
+}
+
+.due-tomorrow {
+  background-color: hsl(var(--due-tomorrow));
+  color: hsl(var(--due-tomorrow-fg));
+}
+
+.due-upcoming {
+  background-color: hsl(var(--due-upcoming));
+  color: hsl(var(--due-upcoming-fg));
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.animate-slide-in {
+  animation: slideIn 0.3s ease-out;
+}
+
+/* Glass card effect */
+.glass-card {
+  @apply backdrop-blur-xl bg-card/60 border border-white/10;
+}
+
+/* Gradient mesh background */
+.gradient-mesh {
+  background:
+    radial-gradient(ellipse at 20% 50%, hsl(var(--primary) / 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, hsl(263 70% 50% / 0.06) 0%, transparent 50%),
+    radial-gradient(ellipse at 60% 80%, hsl(330 70% 50% / 0.04) 0%, transparent 50%);
+}
+
+/* Shadow elevation system */
+:root {
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+}
+
+.dark {
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.3);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.4), 0 2px 4px -2px rgb(0 0 0 / 0.3);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.5), 0 4px 6px -4px rgb(0 0 0 / 0.4);
+}
+
+/* Shimmer skeleton */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.animate-shimmer {
+  background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--muted-foreground) / 0.1) 50%, hsl(var(--muted)) 75%);
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+}
+
+/* Stagger fadeIn */
+@keyframes staggerFadeIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-stagger-in > * {
+  animation: staggerFadeIn 0.4s ease-out both;
+}
+.animate-stagger-in > *:nth-child(1) { animation-delay: 0.05s; }
+.animate-stagger-in > *:nth-child(2) { animation-delay: 0.1s; }
+.animate-stagger-in > *:nth-child(3) { animation-delay: 0.15s; }
+.animate-stagger-in > *:nth-child(4) { animation-delay: 0.2s; }
+.animate-stagger-in > *:nth-child(5) { animation-delay: 0.25s; }
+
+/* Streak glow */
+.streak-glow {
+  box-shadow: 0 0 12px hsl(25 95% 53% / 0.3);
+}
+
+/* Celebration burst particles */
+@keyframes burst {
+  0% { transform: translate(-50%, -50%) scale(1); opacity: 1; }
+  100% { transform: translate(calc(-50% + var(--burst-x)), calc(-50% + var(--burst-y))) scale(0); opacity: 0; }
+}
+
+.animate-burst {
+  animation: burst 0.6s ease-out forwards;
+}
+
+/* Note color accents */
+.note-accent-blue { border-left: 3px solid #3b82f6; }
+.note-accent-green { border-left: 3px solid #22c55e; }
+.note-accent-purple { border-left: 3px solid #8b5cf6; }
+.note-accent-pink { border-left: 3px solid #ec4899; }
+.note-accent-yellow { border-left: 3px solid #eab308; }
+.note-accent-orange { border-left: 3px solid #f97316; }
+.note-accent-default { border-left: 3px solid hsl(var(--border)); }
+
+/* Print styles for case study reports */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  
+  body {
+    background: white;
+  }
+  
+  .print-only {
+    display: block !important;
+  }
+}
+
+.print-only {
+  display: none;
+}
+
+/* ── Mobile craft layer (iOS-grade touch feedback, app-wide) ───────────── */
+
+/* Momentum scrolling that matches native: no half-elastic overscroll. */
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  @media (max-width: 640px) {
+    body {
+      overscroll-behavior-y: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+  }
+}
+
+/* Tap feedback: every interactive surface compresses slightly under the
+   finger, like a native iOS control. Applied via pointer press (works for
+   mouse + touch + pen), gated to touch-primary devices so desktop stays
+   precise. Reduced-motion users get opacity only. */
+@media (hover: none) and (pointer: coarse) {
+  a,
+  button,
+  [role="button"],
+  [role="tab"],
+  summary {
+    transition: opacity 0.12s ease, transform 0.12s cubic-bezier(0.2, 0, 0, 1);
+  }
+  a:active,
+  button:active,
+  [role="button"]:active,
+  [role="tab"]:active,
+  summary:active {
+    transform: scale(0.97);
+    opacity: 0.85;
+  }
+  /* Cards that are links get a slightly softer compression. */
+  a:active .card-press,
+  .card-press:active {
+    transform: scale(0.985);
+  }
+}
+@media (hover: none) and (pointer: coarse) and (prefers-reduced-motion: reduce) {
+  a:active,
+  button:active,
+  [role="button"]:active,
+  [role="tab"]:active,
+  summary:active {
+    transform: none;
+  }
+}
+
+/* Touch scrolling strips: horizontal chip rows scroll with hidden bars and
+   momentum, never hijacking vertical page scroll. */
+.scroll-touch {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+}
+.scroll-touch::-webkit-scrollbar {
+  display: none;
+}
+
+/* Edge-fade mask for scrollable chip rows — signals more content without a
+   permanent scrollbar. Mask only; no background is painted. */
+.edge-fade {
+  mask-image: linear-gradient(to right, transparent 0, black 16px, black calc(100% - 16px), transparent 100%);
+  -webkit-mask-image: linear-gradient(to right, transparent 0, black 16px, black calc(100% - 16px), transparent 100%);
+}
+
+/* Larger, native-feeling text selection and caret on phones. */
+@media (max-width: 640px) {
+  ::selection {
+    background: hsl(var(--primary) / 0.25);
+  }
+  input,
+  textarea,
+  select {
+    font-size: 16px; /* prevents iOS zoom-on-focus */
+  }
+}
+
+/* Tabular numerals everywhere numbers compare (load %, counts, dates). */
+.nums {
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── iOS-grade card system ──────────────────────────────────────────────
+   From the inspiration set (dark task planners): cards sit on the canvas
+   with generous radius and hairline borders, not shadows. Depth comes from
+   surface tone steps; the border carries the edge. Hover (fine pointers)
+   adds one soft shadow only; touch devices never see it. */
+@media (max-width: 640px) {
+  .card,
+  [data-slot="card"] {
+    border-radius: 1rem;        /* rounded-2xl */
+    border-width: 1px;
+  }
+}
+
+/* Hairline border on dark: lighter than the default border token so cards
+   read as layered glass rather than boxes. Dark mode only. */
+.dark .card:not([data-plain]),
+.dark [data-slot="card"]:not([data-plain]) {
+  border-color: hsl(var(--foreground) / 0.08);
+}
+
+/* Section rhythm on phones: 24px between page sections feels native;
+   the tailwind pages already use space-y-6, so this only tunes cards
+   inside scroll rails. */
+@media (max-width: 640px) {
+  .scroll-touch > .card {
+    border-radius: 1rem;
+  }
+}
+
+/* Segmented-control feel for tab rows on phones (Tasks/KPIs tabs):
+   the row becomes a single inset track with equal pills. */
+@media (max-width: 640px) {
+  .tab-track {
+    background: hsl(var(--muted) / 0.6);
+    border-radius: 0.875rem;
+    padding: 0.25rem;
+    gap: 0.25rem;
+  }
+  .tab-track > * {
+    border-radius: 0.625rem;
+    min-height: 2.5rem;
+  }
+}
+
+/* iOS paging feel: metric/filter rails snap card-by-card under touch. */
+@media (hover: none) and (pointer: coarse) {
+  .scroll-touch {
+    scroll-snap-type: x mandatory;
+  }
+  .scroll-touch > * {
+    scroll-snap-align: start;
+  }
+}
+
+/* Sticky glass header for page toolbars on phones: content scrolls under a
+   blurred bar instead of pushing actions off-screen. */
+@media (max-width: 640px) {
+  .sticky-glass {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: hsl(var(--background) / 0.82);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border-bottom: 1px solid hsl(var(--foreground) / 0.08);
+  }
+}
+
+/* Segmented pill filters (move 6 from the brief): the page's filter pill
+   rows read as one iOS segmented control on phones. */
+@media (max-width: 640px) {
+  .pill-segment {
+    border-radius: 9999px;
+    background: hsl(var(--muted) / 0.6);
+    padding: 0.25rem;
+    gap: 0.25rem;
+  }
+  .pill-segment > * {
+    border-radius: 9999px;
+    min-height: 2.25rem;
+  }
+}

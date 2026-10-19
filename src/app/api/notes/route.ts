@@ -1,0 +1,9 @@
+import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { createNote, listNotesForActor, NoteCommandError } from "@/lib/notes/commands";
+import { z } from "zod";
+const actor = (u: any) => ({ id: u.id, role: u.role, departmentIds: u.departmentIds ?? [] });
+const legacy = z.object({ title: z.string().min(1), body: z.string(), isShared: z.boolean(), tagIds: z.array(z.string()).optional(), links: z.array(z.object({ label: z.string().min(1), url: z.string().url() })).optional(), taskId: z.string().optional().nullable(), caseStudyId: z.string().optional().nullable() });
+function failure(error: any, fallback: string) { if (error instanceof NoteCommandError) return NextResponse.json({ error: error.message, code: error.code }, { status: error.status }); console.error(fallback, error); return NextResponse.json({ error: fallback }, { status: 500 }); }
+export async function GET() { try { const session = await auth(); if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); return NextResponse.json(await listNotesForActor({ query: "" }, actor(session.user))); } catch (e) { return failure(e, "Failed to fetch notes"); } }
+export async function POST(request: Request) { try { const session = await auth(); if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); const parsed = legacy.parse(await request.json()); const note = await createNote({ ...parsed, isShared: parsed.isShared, tagIds: parsed.tagIds ?? [], links: parsed.links ?? [], taskId: parsed.taskId ?? null, caseStudyId: parsed.caseStudyId ?? null }, actor(session.user)); return NextResponse.json(note, { status: 201 }); } catch (e: any) { if (e instanceof z.ZodError) return NextResponse.json({ error: e.errors }, { status: 400 }); return failure(e, "Failed to create note"); } }

@@ -1,0 +1,26 @@
+{
+  "primarySource": "Glossy W-O Ribbon Logo(1).png",
+  "alternateSource": "Metallic W and O Ribbon Monogram.png",
+  "sourceDimensions": {
+    "primary": [
+      1254,
+      1254
+    ],
+    "alternate": [
+      1536,
+      1024
+    ]
+  },
+  "primaryCropBox": [
+    180,
+    432,
+    1067,
+    826
+  ],
+  "primaryPreparedSize": [
+    975,
+    482
+  ],
+  "transform": "Empty-canvas trim, padding and size derivatives only; original user-provided marks unchanged in source/",
+  "background": "Original black background retained, no invented transparency or replacement mark"
+}

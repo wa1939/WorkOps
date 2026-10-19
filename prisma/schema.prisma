@@ -1,0 +1,2325 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  MANAGER
+  MEMBER
+  VIEWER
+}
+
+enum ProjectAccessLevel {
+  ADMIN
+  MANAGER
+  MEMBER
+  VIEWER
+}
+
+enum AnnouncementPriority {
+  NORMAL
+  IMPORTANT
+  CRITICAL
+}
+
+enum WorkspaceRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum TaskStatus {
+  TODO
+  DOING
+  BLOCKED
+  WAITING
+  DONE
+  CANCELED
+}
+
+enum TaskType {
+  STANDARD
+  EXTERNAL_ACTION
+}
+
+enum FollowUpTrigger {
+  PRE_DUE
+  DUE
+  OVERDUE
+  MANUAL
+}
+
+enum EmailDeliveryState {
+  PENDING
+  SENDING
+  SENT
+  FAILED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum KpiStatus {
+  ON_TRACK
+  AT_RISK
+  OFF_TRACK
+}
+
+enum AttachmentType {
+  LINK
+  FILE
+}
+
+enum AiMemoryState {
+  PROPOSED
+  APPROVED
+  REJECTED
+  ARCHIVED
+  SUPERSEDED
+}
+
+enum AiMemoryScope {
+  USER
+  TEAM
+  DEPARTMENT
+  WORKSPACE
+}
+
+enum AiMemoryKind {
+  PREFERENCE
+  FACT
+  DECISION
+  TERMINOLOGY
+  RELATIONSHIP
+  LESSON
+}
+
+enum AiMemoryProvenance {
+  GENERATED
+  USER_PROVIDED
+  IMPORTED
+  SYSTEM
+}
+
+enum AiMemoryFreshness {
+  FRESH
+  AGING
+  STALE
+  UNKNOWN
+}
+
+enum AiPlaybookState {
+  DRAFT
+  IN_REVIEW
+  APPROVED
+  ARCHIVED
+}
+
+enum AiFeedbackOutcome {
+  ACCEPTED
+  EDITED
+  REJECTED
+  IGNORED
+  UNDONE
+  CORRECTED
+}
+
+enum AiProcessingMode {
+  LOCAL_ONLY
+  LOCAL_PREFERRED
+  CLOUD_QUALITY
+}
+
+enum AiSourceBlockKind {
+  TEXT
+  TABLE
+  FORMULA
+  IMAGE_CAPTION
+  TRANSCRIPT
+}
+
+enum AiExtractionStatus {
+  SUCCEEDED
+  PARTIAL
+  FAILED
+}
+
+enum AiProcessingConsentDecision {
+  APPROVED
+  DENIED
+}
+
+model Department {
+  id          String                @id @default(cuid())
+  name        String                @unique
+  workspaceId String?
+  createdAt   DateTime              @default(now())
+  users       UserDepartment[]
+  caseStudies CaseStudyDepartment[]
+  responsibleProjects Project[]      @relation("ProjectResponsibleDepartment")
+  aiMemories AiMemory[]
+  workspace   Workspace?             @relation(fields: [workspaceId], references: [id])
+
+  @@index([workspaceId])
+}
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String    @default("")
+  password        String? // Hashed password for email/password auth
+  passwordVersion Int     @default(0)
+  emailVerified DateTime? // When email was verified
+  title         String?
+  image         String?
+  role          Role      @default(MEMBER)
+  isActive      Boolean   @default(true)
+
+  capacityPerWeekHours Float  @default(35)
+  timezone             String @default("Asia/Riyadh")
+
+  managerId  String?
+  manager    User?     @relation("UserManager", fields: [managerId], references: [id])
+  reports    User[]    @relation("UserManager")
+  quietUntil DateTime?
+
+  /// Comma-separated alternative names/kunyas for AI name resolution ("وليد، أبو دانة")
+  aliases String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  departments     UserDepartment[]
+  workspaceMemberships WorkspaceMember[]
+  taskAssignments TaskAssignment[]
+  taskSubscribers TaskSubscriber[]
+  createdTasks    Task[]           @relation("TaskCreator")
+
+  ownedProjects    Project[]   @relation("ProjectOwner")
+  ownedCaseStudies CaseStudy[] @relation("CaseStudyOwner")
+  ownedKpis        KPI[]       @relation("KpiOwner")
+
+  projectMemberships   ProjectMember[]
+  caseStudyMemberships CaseStudyMember[]
+
+  managedProjects     Project[]        @relation("ProjectManager")
+  sponsoredProjects   Project[]        @relation("ProjectSponsor")
+  ownedProjectOutputs ProjectOutput[]  @relation("ProjectOutputOwner")
+  ownedProjectRisks   ProjectRisk[]    @relation("ProjectRiskOwner")
+
+  notifications            Notification[]
+  notificationPreferences  NotificationPreference[]
+  taskReminders            TaskReminder[]
+  comments      Comment[]
+  commentReactions CommentReaction[]
+  commentReads  CommentRead[]
+  kpiUpdates    KPIUpdate[]
+  notes         NotePage[]
+  savedViews    SavedView[]
+  auditLogs     AuditLog[]
+
+  leaveRequests   LeaveRequest[] @relation("LeaveUser")
+  delegatedLeaves LeaveRequest[] @relation("LeaveDelegate")
+  handoversFrom   Handover[]     @relation("HandoverFrom")
+  handoversTo     Handover[]     @relation("HandoverTo")
+
+  supportRequestsCreated SupportRequest[] @relation("SupportRequester")
+  supportRequestsClaimed SupportRequest[] @relation("SupportClaimer")
+
+  aiConversations AiConversation[]
+  aiIntakes       AiIntake[]
+  loadSnapshots   TeamLoadSnapshot[]
+  timeLogs        TimeLog[]
+  activeTimers    ActiveTimer[]
+
+  approvalsRequested AiApproval[] @relation("ApprovalRequested")
+  approvalsDecided   AiApproval[] @relation("ApprovalDecided")
+  aiWorkflows       AiWorkflow[] @relation("AiWorkflowActor")
+  aiMemories        AiMemory[]   @relation("AiMemoryOwner")
+  aiPlaybooks       AiPlaybook[] @relation("AiPlaybookOwner")
+  aiFeedback        AiFeedback[] @relation("AiFeedbackActor")
+  aiAssets          AiAsset[]    @relation("AiAssetOwner")
+  aiExtractionRuns  AiExtractionRun[] @relation("AiExtractionRunActor")
+  aiProcessingConsents AiProcessingConsent[] @relation("AiProcessingConsentActor")
+
+  announcementsCreated Announcement[]     @relation("AnnouncementAuthor")
+  announcementsSeen    AnnouncementSeen[]
+
+  accounts Account[]
+  sessions Session[]
+
+  workAreasCreated        WorkArea[]        @relation("WorkAreaCreator")
+  externalContactsCreated ExternalContact[] @relation("ExternalContactCreator")
+  externalActionsOwned    ExternalAction[]  @relation("ExternalActionOwner")
+  externalActionsClosed   ExternalAction[]  @relation("ExternalActionCloser")
+  actionEvidenceAdded     ActionEvidence[]  @relation("ActionEvidenceAdder")
+  followUpEventsOwned     FollowUpEvent[]   @relation("FollowUpEventOwner")
+  followUpEventsSent      FollowUpEvent[]   @relation("FollowUpEventSender")
+  aiJobs                  AiJob[]           @relation("AiJobActor")
+  aiMonitorsCreated       AiMonitor[]       @relation("AiMonitorCreator")
+  aiSuggestions           AiSuggestion[]    @relation("AiSuggestionActor")
+  aiConnectorsCreated     AiConnector[]     @relation("AiConnectorCreator")
+
+  /// P04: encrypted browser push subscriptions bound to this user.
+  pushSubscriptions       PushSubscription[]
+  aliasesFrom             UserIdentityAlias[] @relation("aliasSource")
+  aliasesTo               UserIdentityAlias[] @relation("aliasCanonical")
+  aliasApprovals          UserIdentityAlias[] @relation("aliasApprovedBy")
+}
+
+model TeamLoadSnapshot {
+  id              String   @id @default(cuid())
+  userId          String
+  weekStart       DateTime // Sunday 00:00 UTC of the Saudi work week
+  loadHours       Float
+  loadPercent     Float
+  driversJson     String? // JSON: { hours, capacity, leaveDays, drivers: [{title,hours,source}] }
+  computedAt      DateTime @default(now())
+  inputVersion    String?
+  calendarVersion String?
+  unknownTaskCount Int?
+  backlogCount    Int?
+  confidence      Float?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, weekStart])
+  @@index([weekStart])
+}
+
+model TeamLoadRun {
+  id           String    @id @default(cuid())
+  scope        String
+  inputVersion String
+  status       String    @default("running")
+  leaseUntil   DateTime
+  startedAt    DateTime  @default(now())
+  finishedAt   DateTime?
+
+  @@index([scope, status])
+}
+
+/// A team-wide announcement shown as a one-time popup (e.g. a release note).
+/// Admins broadcast these; each user sees an active announcement once.
+model Announcement {
+  id          String   @id @default(cuid())
+  title       String
+  body        String // supports newlines; rendered as-is (whitespace-pre-line)
+  variant     String   @default("celebrate") // celebrate | info | warning
+  isActive    Boolean  @default(true)
+  status      String   @default("DRAFT") // DRAFT | SCHEDULED | PUBLISHED | ARCHIVED
+  publishAt   DateTime?
+  expiresAt   DateTime?
+  priority    AnnouncementPriority @default(NORMAL)
+  // JSON membership selector: { departments: string[], includeFutureMembers: boolean }
+  audienceJson String?
+  ctaUrl      String? // same-origin relative URL validated in app code
+  requireAcknowledgement Boolean @default(false)
+  audienceVersion Int @default(1)
+  createdById String?
+  workspaceId String?
+  createdAt   DateTime @default(now())
+
+  createdBy User?              @relation("AnnouncementAuthor", fields: [createdById], references: [id])
+  workspace Workspace?         @relation(fields: [workspaceId], references: [id])
+  seenBy    AnnouncementSeen[]
+
+  @@index([isActive, createdAt])
+  @@index([workspaceId])
+}
+
+/// One row per (announcement, user) that has dismissed it — so each user sees
+/// a given announcement exactly once.
+model AnnouncementSeen {
+  id             String   @id @default(cuid())
+  announcementId String
+  userId         String
+  seenAt         DateTime @default(now())
+  acknowledgedAt DateTime?
+  audienceVersion Int @default(1)
+
+  announcement Announcement @relation(fields: [announcementId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([announcementId, userId])
+  @@index([userId])
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model PasswordResetToken {
+  identifier String
+  token      String   @unique
+  tokenHash  String?
+  expires    DateTime
+  usedAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  @@unique([identifier, token])
+  @@index([tokenHash])
+}
+
+model RateLimitEntry {
+  id          String   @id @default(cuid())
+  key         String
+  windowStart DateTime
+  count       Int      @default(0)
+
+  @@unique([key, windowStart])
+  @@index([key, windowStart])
+}
+
+model UserDepartment {
+  id           String     @id @default(cuid())
+  userId       String
+  departmentId String
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, departmentId])
+}
+
+model Tag {
+  id       String    @id @default(cuid())
+  name     String    @unique
+  color    String    @default("#6366f1")
+  taskTags TaskTag[]
+  noteTags NoteTag[]
+}
+
+enum ProjectSponsorStatus {
+  NOT_REQUIRED
+  DRAFT
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ProjectHealth {
+  NOT_SET
+  ON_TRACK
+  AT_RISK
+  OFF_TRACK
+}
+
+enum ProjectOutputStatus {
+  PLANNED
+  IN_PROGRESS
+  DELIVERED
+  ACCEPTED
+}
+
+enum ProjectRiskStatus {
+  OPEN
+  MITIGATING
+  CLOSED
+}
+
+enum ProjectStageStatus {
+  PLANNED
+  ACTIVE
+  COMPLETE
+  BLOCKED
+}
+
+model Project {
+  id          String    @id @default(cuid())
+  name        String
+  taskSeq     Int       @default(0)
+  description String?
+  status      String    @default("Active")
+  startAt     DateTime?
+  dueAt       DateTime?
+  dueAtEnd    DateTime?
+
+  ownerId String?
+  owner   User?   @relation("ProjectOwner", fields: [ownerId], references: [id])
+
+  workAreaId String?
+  workArea   WorkArea? @relation(fields: [workAreaId], references: [id], onDelete: Restrict)
+
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id])
+
+  // --- Strategic project fields (Plan 3 Task 1, additive only) ---
+  managerId              String?
+  manager                User?     @relation("ProjectManager", fields: [managerId], references: [id])
+  responsibleDepartmentId String?
+  responsibleDepartment  Department? @relation("ProjectResponsibleDepartment", fields: [responsibleDepartmentId], references: [id], onDelete: SetNull)
+  sponsorId              String?
+  sponsor                User?     @relation("ProjectSponsor", fields: [sponsorId], references: [id])
+  sponsorStatus          ProjectSponsorStatus @default(NOT_REQUIRED)
+  priority               Priority  @default(MEDIUM)
+  health                 ProjectHealth @default(NOT_SET)
+  objective              String?
+  scope                  String?
+  successCriteria        String?
+  projectType            String?
+  metadataJson           String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tasks           Task[]
+  customFields    CustomField[]
+  links           Link[]
+  members         ProjectMember[]
+  supportRequests SupportRequest[]
+  stages          ProjectStage[]
+  objectives      ProjectObjective[]
+  outputs         ProjectOutput[]
+  risks           ProjectRisk[]
+
+  @@index([responsibleDepartmentId])
+  @@index([managerId])
+  @@index([sponsorId, sponsorStatus])
+  @@index([health])
+  @@index([workspaceId])
+}
+
+/// Strategic outcome statement tied to a KPI, ordered for display.
+model ProjectObjective {
+  id         String  @id @default(cuid())
+  projectId  String
+  statement  String
+  measure    String?
+  target     String?
+  kpiId      String?
+  order      Int     @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  kpi     KPI?    @relation(fields: [kpiId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, order])
+  @@index([kpiId])
+}
+
+/// Strategic deliverable with acceptance criteria and an accountable owner.
+model ProjectOutput {
+  id                 String             @id @default(cuid())
+  projectId          String
+  title              String
+  description        String?
+  acceptanceCriteria String?
+  ownerId            String?
+  dueAt              DateTime?
+  status             ProjectOutputStatus @default(PLANNED)
+  order              Int                @default(0)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  owner   User?   @relation("ProjectOutputOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, order])
+  @@index([ownerId])
+  @@index([status])
+}
+
+/// Strategic risk with 1-5 likelihood/impact scoring and mitigation.
+model ProjectRisk {
+  id          String           @id @default(cuid())
+  projectId   String
+  title       String
+  description String?
+  likelihood  Int
+  impact      Int
+  mitigation  String?
+  ownerId     String?
+  status      ProjectRiskStatus @default(OPEN)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  owner   User?   @relation("ProjectRiskOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+
+  @@index([projectId, status])
+  @@index([ownerId])
+}
+
+model ProjectStage {
+  id        String  @id @default(cuid())
+  projectId String
+  name      String
+  order     Int     @default(0)
+  color     String? // e.g. "#7c3aed" or "purple"
+
+  // --- Strategic stage fields (Plan 3 Task 1, additive only) ---
+  startAt      DateTime?
+  dueAt        DateTime?
+  gateCriteria String?
+  status       ProjectStageStatus @default(PLANNED)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  tasks   Task[]
+
+  @@index([projectId, order])
+}
+
+model AppConfig {
+  key       String   @id
+  value     String
+  updatedAt DateTime @updatedAt
+}
+
+model ProjectMember {
+  id          String            @id @default(cuid())
+  projectId   String
+  userId      String
+  role        String?
+  accessLevel ProjectAccessLevel @default(MEMBER)
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+}
+
+model CaseStudy {
+  id       String    @id @default(cuid())
+  name     String
+  brief    String?
+  status   String    @default("Open")
+  dueAt    DateTime?
+  dueAtEnd DateTime?
+
+  ownerId String?
+  owner   User?   @relation("CaseStudyOwner", fields: [ownerId], references: [id])
+
+  workAreaId String?
+  workArea   WorkArea? @relation(fields: [workAreaId], references: [id], onDelete: Restrict)
+
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id])
+
+  reportBody String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  tasks       Task[]
+  links       Link[]
+  members     CaseStudyMember[]
+  departments CaseStudyDepartment[]
+  notes       NotePage[]
+
+  @@index([workspaceId])
+}
+
+model CaseStudyMember {
+  id          String  @id @default(cuid())
+  caseStudyId String
+  userId      String
+  role        String?
+
+  caseStudy CaseStudy @relation(fields: [caseStudyId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([caseStudyId, userId])
+}
+
+model CaseStudyDepartment {
+  id           String     @id @default(cuid())
+  caseStudyId  String
+  departmentId String
+  caseStudy    CaseStudy  @relation(fields: [caseStudyId], references: [id], onDelete: Cascade)
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@unique([caseStudyId, departmentId])
+}
+
+model Task {
+  id          String     @id @default(cuid())
+  taskKey     String?    @unique
+  title       String
+  description String?
+  type        TaskType   @default(STANDARD)
+  status      TaskStatus @default(TODO)
+  priority    Priority   @default(MEDIUM)
+  progressMode String    @default("manual")
+  estimateMinutes Int?
+  manualProgress Int?
+
+  startAt  DateTime?
+  dueAt    DateTime?
+  dueAtEnd DateTime?
+  doneAt   DateTime?
+
+  plannedStartAt      DateTime?
+  plannedEndAt        DateTime?
+  estimateConfirmedAt DateTime?
+
+  effortHours   Float?
+  actualHours   Float?
+  remainingEffortHours Float?
+  aiEffortHours Float? // GLM-estimated effort, cached; manual effortHours always wins
+  aiEffortAt    DateTime?
+  signatureHash String?
+  isPrivate     Boolean @default(false)
+  isStarred     Boolean @default(false)
+  archived      Boolean @default(false)
+  siblingOrder  Int     @default(0)
+
+  parentTaskId String?
+  parent       Task?   @relation("TaskSubtasks", fields: [parentTaskId], references: [id], onDelete: SetNull)
+
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id])
+
+  stageId String?
+  stage   ProjectStage? @relation(fields: [stageId], references: [id])
+
+  caseStudyId String?
+  caseStudy   CaseStudy? @relation(fields: [caseStudyId], references: [id])
+
+  kpiId String?
+  kpi   KPI?    @relation(fields: [kpiId], references: [id])
+
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id])
+
+  createdById String?
+  createdBy   User?   @relation("TaskCreator", fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  assignments     TaskAssignment[]
+  subtasks        Task[]           @relation("TaskSubtasks")
+  subscribers     TaskSubscriber[]
+  customFieldValues CustomFieldValue[]
+  comments        Comment[]
+  attachments     Attachment[]
+  links           Link[]
+  tags            TaskTag[]
+  dependencies    TaskDependency[] @relation("DependsOn")
+  blockers        TaskDependency[] @relation("Blocks")
+  reminders       TaskReminder[]
+  auditLogs       AuditLog[]
+  handoverTasks   HandoverTask[]
+  supportRequests SupportRequest[]
+  notes           NotePage[]
+  externalAction  ExternalAction?
+  recurringRule   RecurringRule?
+  timeLogs        TimeLog[]
+  activeTimer     ActiveTimer[]
+
+  @@index([status])
+  @@index([dueAt])
+  @@index([createdById])
+  @@index([projectId])
+  @@index([caseStudyId])
+  @@index([stageId])
+  @@index([signatureHash])
+  @@index([isStarred])
+  @@index([archived])
+  @@index([parentTaskId])
+  @@index([workspaceId])
+}
+
+model TimeLog {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  startedAt DateTime
+  minutes   Int
+  note      String?
+  source    String   @default("manual") // timer | manual
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([userId, startedAt])
+}
+
+model ActiveTimer {
+  userId    String   @id
+  taskId    String
+  startedAt DateTime
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+}
+
+model RecurringRule {
+  id           String   @id @default(cuid())
+  taskId       String   @unique
+  freq         String
+  interval     Int      @default(1)
+  byDay        Json?
+  byMonthDay   Int?
+  nthWeek      Int?
+  weekday      Int?
+  mode         String   @default("create")
+  targetStatus String?
+  active       Boolean  @default(true)
+  lastRunAt    DateTime?
+  nextRunAt    DateTime?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([active, nextRunAt])
+}
+
+model TaskAssignment {
+  id     String @id @default(cuid())
+  taskId String
+  userId String
+  plannedShare Float? // Nonnegative; normalized shares sum to 1 for an allocated task; enforce in application code, not DB.
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([taskId, userId])
+}
+
+model TaskDependency {
+  id          String @id @default(cuid())
+  taskId      String
+  dependsOnId String
+
+  task      Task @relation("Blocks", fields: [taskId], references: [id], onDelete: Cascade)
+  dependsOn Task @relation("DependsOn", fields: [dependsOnId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, dependsOnId])
+}
+
+model TaskTag {
+  id     String @id @default(cuid())
+  taskId String
+  tagId  String
+  task   Task   @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  tag    Tag    @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, tagId])
+}
+
+model Attachment {
+  id        String         @id @default(cuid())
+  taskId    String
+  type      AttachmentType
+  filename  String?
+  url       String
+  createdAt DateTime       @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+}
+
+model Link {
+  id    String @id @default(cuid())
+  label String
+  url   String
+
+  taskId      String?
+  projectId   String?
+  caseStudyId String?
+  noteId      String?
+
+  task      Task?      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  project   Project?   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  caseStudy CaseStudy? @relation(fields: [caseStudyId], references: [id], onDelete: Cascade)
+  note      NotePage?  @relation(fields: [noteId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+}
+
+model Comment {
+  id             String   @id @default(cuid())
+  body           String
+  taskId         String
+  authorId       String?
+  mentionUserIds String[] @default([])
+  editedAt       DateTime?
+  deletedAt      DateTime?
+
+  isHandoverUpdate Boolean @default(false)
+
+  author    User?             @relation(fields: [authorId], references: [id])
+  task      Task              @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  reactions CommentReaction[]
+  reads     CommentRead[]
+
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
+}
+
+model LeaveRequest {
+  id         String   @id @default(cuid())
+  userId     String
+  delegateId String
+  startAt    DateTime
+  endAt      DateTime
+  reason     String?
+  status     String   @default("Approved")
+
+  user     User @relation("LeaveUser", fields: [userId], references: [id])
+  delegate User @relation("LeaveDelegate", fields: [delegateId], references: [id])
+
+  handovers Handover[]
+
+  createdAt DateTime @default(now())
+}
+
+model Handover {
+  id             String  @id @default(cuid())
+  leaveRequestId String
+  fromUserId     String
+  toUserId       String
+  note           String?
+
+  leaveRequest LeaveRequest @relation(fields: [leaveRequestId], references: [id], onDelete: Cascade)
+  fromUser     User         @relation("HandoverFrom", fields: [fromUserId], references: [id])
+  toUser       User         @relation("HandoverTo", fields: [toUserId], references: [id])
+
+  tasks HandoverTask[]
+
+  createdAt DateTime @default(now())
+}
+
+model HandoverTask {
+  id         String @id @default(cuid())
+  handoverId String
+  taskId     String
+
+  handover Handover @relation(fields: [handoverId], references: [id], onDelete: Cascade)
+  task     Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([handoverId, taskId])
+}
+
+model KPI {
+  id          String @id @default(cuid())
+  perspective String
+  objective   String
+  name        String
+
+  definition String?
+  formula    String?
+  dataSource String?
+  metric     String?
+  unit       String?
+  weight     Float?
+
+  annualTarget    Float?
+  calculationType String?
+
+  level1 Float?
+  level2 Float?
+  level3 Float?
+  level4 Float?
+  level5 Float?
+
+  q1Target Float?
+  q2Target Float?
+  q3Target Float?
+  q4Target Float?
+
+  trackingPeriod String @default("ANNUAL") // "Q1", "Q2", "Q3", "Q4", or "ANNUAL"
+
+  ownerId String?
+  owner   User?   @relation("KpiOwner", fields: [ownerId], references: [id])
+
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id])
+
+  status       KpiStatus @default(ON_TRACK)
+  reminderRule String?
+
+  updates KPIUpdate[]
+  tasks   Task[]
+  projectObjectives ProjectObjective[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workspaceId])
+}
+
+model KPIUpdate {
+  id    String @id @default(cuid())
+  kpiId String
+  kpi   KPI    @relation(fields: [kpiId], references: [id], onDelete: Cascade)
+
+  value  Float?
+  note   String?
+  period String? // Legacy field for backward compatibility
+
+  quarter            String? // "Q1", "Q2", "Q3", "Q4", or "ANNUAL"
+  score              Float? // Score out of 5
+  achievementPercent Float? // Percentage of target achieved
+
+  createdById String?
+  createdBy   User?   @relation(fields: [createdById], references: [id])
+
+  createdAt DateTime @default(now())
+}
+
+model NotePage {
+  id       String  @id @default(cuid())
+  title    String
+  body     String
+  authorId String?
+  author   User?   @relation(fields: [authorId], references: [id])
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id])
+
+  isShared Boolean @default(true)
+  isPinned Boolean @default(false)
+  color    String  @default("default")
+
+  // Link to task or case study
+  taskId      String?
+  caseStudyId String?
+  task        Task?      @relation(fields: [taskId], references: [id], onDelete: SetNull)
+  caseStudy   CaseStudy? @relation(fields: [caseStudyId], references: [id], onDelete: SetNull)
+
+  tags  NoteTag[]
+  links Link[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([workspaceId])
+}
+
+model NoteTag {
+  id     String   @id @default(cuid())
+  noteId String
+  tagId  String
+  note   NotePage @relation(fields: [noteId], references: [id], onDelete: Cascade)
+  tag    Tag      @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@unique([noteId, tagId])
+}
+
+model TaskReminder {
+  id            String    @id @default(cuid())
+  taskId        String
+  userId        String
+  offsetMinutes Int // e.g., 60 = 1 hour before, 1440 = 1 day before
+  sentAt        DateTime?
+  createdAt     DateTime  @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId, offsetMinutes])
+}
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String
+  title     String
+  body      String?
+  linkUrl   String?
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  followUpEvent FollowUpEvent?
+
+  @@index([userId, isRead])
+}
+
+model WorkArea {
+  id             String      @id @default(cuid())
+  name           String
+  normalizedName String      @unique
+  description    String?
+  displayOrder   Int         @default(0)
+  isArchived     Boolean     @default(false)
+  createdById    String?
+  createdBy      User?       @relation("WorkAreaCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  projects       Project[]
+  caseStudies    CaseStudy[]
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
+
+  @@index([isArchived, displayOrder])
+}
+
+model ExternalContact {
+  id              String           @id @default(cuid())
+  name            String
+  email           String
+  normalizedEmail String           @unique
+  department      String?
+  organization    String?
+  isArchived      Boolean          @default(false)
+  createdById     String
+  createdBy       User             @relation("ExternalContactCreator", fields: [createdById], references: [id])
+  externalActions ExternalAction[]
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@index([isArchived, name])
+}
+
+model ExternalAction {
+  id                     String           @id @default(cuid())
+  taskId                 String           @unique
+  ownerId                String
+  externalContactId      String
+  overdueIntervalDays    Int?             @default(7)
+  lastExternalResponseAt DateTime?
+  closedAt               DateTime?
+  closedById             String?
+  closureNote            String?          @db.Text
+  task                   Task             @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  owner                  User             @relation("ExternalActionOwner", fields: [ownerId], references: [id])
+  externalContact        ExternalContact  @relation(fields: [externalContactId], references: [id])
+  closedBy               User?            @relation("ExternalActionCloser", fields: [closedById], references: [id], onDelete: SetNull)
+  reminderRules          ReminderRule[]
+  followUpEvents         FollowUpEvent[]
+  evidence               ActionEvidence[]
+  createdAt              DateTime         @default(now())
+  updatedAt              DateTime         @updatedAt
+
+  @@index([ownerId])
+  @@index([externalContactId])
+}
+
+model ReminderRule {
+  id               String         @id @default(cuid())
+  externalActionId String
+  daysBeforeDue    Int
+  externalAction   ExternalAction @relation(fields: [externalActionId], references: [id], onDelete: Cascade)
+  createdAt        DateTime       @default(now())
+
+  @@unique([externalActionId, daysBeforeDue])
+}
+
+model FollowUpEvent {
+  id                      String             @id @default(cuid())
+  externalActionId        String
+  triggerType             FollowUpTrigger
+  scheduledDate           DateTime           @db.Date
+  dedupKey                String             @unique
+  ownerId                 String
+  notificationId          String?            @unique
+  notifiedAt              DateTime?
+  ownerEmailState         EmailDeliveryState @default(PENDING)
+  ownerEmailAttempts      Int                @default(0)
+  ownerEmailLastAttemptAt DateTime?
+  ownerEmailLastError     String?            @db.Text
+  ownerEmailProviderId    String?
+  finalRecipient          String?
+  finalSubject            String?
+  finalBody               String?            @db.Text
+  sentAt                  DateTime?
+  sentById                String?
+  externalAction          ExternalAction     @relation(fields: [externalActionId], references: [id], onDelete: Cascade)
+  owner                   User               @relation("FollowUpEventOwner", fields: [ownerId], references: [id])
+  notification            Notification?      @relation(fields: [notificationId], references: [id], onDelete: SetNull)
+  sentBy                  User?              @relation("FollowUpEventSender", fields: [sentById], references: [id], onDelete: SetNull)
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+
+  @@index([externalActionId, scheduledDate])
+  @@index([ownerEmailState, ownerEmailLastAttemptAt])
+}
+
+model ActionEvidence {
+  id               String         @id @default(cuid())
+  externalActionId String
+  label            String
+  url              String
+  addedById        String
+  externalAction   ExternalAction @relation(fields: [externalActionId], references: [id], onDelete: Cascade)
+  addedBy          User           @relation("ActionEvidenceAdder", fields: [addedById], references: [id])
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  @@index([externalActionId, createdAt])
+}
+
+model WeeklyReport {
+  id          String    @id @default(cuid())
+  weekStart   DateTime
+  weekEnd     DateTime
+  title       String
+  body        String
+  type        String    @default("WEEKLY") // WEEKLY | SUNDAY_DIGEST | MONTHLY | QUARTERLY
+  aiSummary   String?   @db.Text // last AI-generated executive summary (pre-edit)
+  finalBody   String?   @db.Text // the operator's edited final — what was actually submitted
+  submittedAt DateTime? // when the operator marked it submitted
+  workspaceId String?
+  workspace   Workspace? @relation(fields: [workspaceId], references: [id])
+  createdAt   DateTime  @default(now())
+
+  @@index([type, createdAt])
+  @@index([workspaceId])
+}
+
+model AuditLog {
+  id         String  @id @default(cuid())
+  entityType String
+  entityId   String
+  action     String
+  metaJson   String?
+  actorId    String?
+  actor      User?   @relation(fields: [actorId], references: [id])
+
+  taskId String?
+  task   Task?   @relation(fields: [taskId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@index([entityType, entityId])
+}
+
+model SavedView {
+  id          String  @id @default(cuid())
+  name        String
+  description String?
+  icon        String?
+  color       String  @default("blue")
+
+  // Retained for compatibility with saved views created before block layouts.
+  entity   String?
+  viewType String?
+  query    String?
+
+  blocksJson String @default("[]") @db.Text // JSON array of blocks
+
+  scope   String  @default("TEAM")
+  ownerId String?
+  owner   User?   @relation(fields: [ownerId], references: [id])
+
+  votes SavedViewVote[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+}
+
+model SavedViewVote {
+  id     String    @id @default(cuid())
+  viewId String
+  userId String
+  view   SavedView @relation(fields: [viewId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([viewId, userId])
+}
+
+model UserStreak {
+  id            String    @id @default(cuid())
+  userId        String    @unique
+  currentStreak Int       @default(0)
+  bestStreak    Int       @default(0)
+  lastActiveAt  DateTime?
+  totalPoints   Int       @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model SupportRequest {
+  id          String   @id @default(cuid())
+  projectId   String?
+  taskId      String?
+  requesterId String
+  title       String
+  description String?
+  status      String   @default("Open")
+  claimedById String?
+  workspaceId String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  task      Task?    @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  requester User     @relation("SupportRequester", fields: [requesterId], references: [id])
+  claimedBy User?    @relation("SupportClaimer", fields: [claimedById], references: [id])
+  workspace Workspace? @relation(fields: [workspaceId], references: [id])
+
+  @@index([workspaceId])
+}
+
+model AiConversation {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title     String?
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+  messages  AiMessage[]
+  feedback  AiFeedback[]
+  summaries AiConversationSummary[]
+
+  @@index([userId, updatedAt])
+}
+
+model AiMessage {
+  id             String         @id @default(cuid())
+  conversationId String
+  conversation   AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  role          String
+  content       String?  @db.Text
+  toolCallsJson String?  @db.Text
+  toolCallId    String?
+  createdAt     DateTime @default(now())
+  feedback      AiFeedback[]
+  summariesStarted AiConversationSummary[] @relation("SummaryStartMessage")
+  summariesEnded   AiConversationSummary[] @relation("SummaryEndMessage")
+
+  @@index([conversationId, createdAt])
+}
+
+model AiMemory {
+  id             String            @id @default(cuid())
+  scope          AiMemoryScope
+  kind           AiMemoryKind
+  state          AiMemoryState     @default(PROPOSED)
+  content        String            @db.Text
+  provenance     AiMemoryProvenance
+  confidence     Float
+  freshness      AiMemoryFreshness @default(FRESH)
+  expiresAt      DateTime?
+  supersededById String?
+  ownerId        String?
+  departmentId   String?
+  sources        AiMemorySource[]
+  owner          User?             @relation("AiMemoryOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  department     Department?       @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  supersededBy   AiMemory?         @relation("AiMemorySupersession", fields: [supersededById], references: [id], onDelete: SetNull)
+  supersedes     AiMemory[]        @relation("AiMemorySupersession")
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+
+  @@index([scope, state, freshness])
+  @@index([ownerId])
+  @@index([departmentId])
+}
+
+model AiMemorySource {
+  id          String   @id @default(cuid())
+  memoryId    String
+  sourceType  String
+  sourceId    String
+  locatorJson String?  @db.Text
+  memory      AiMemory @relation(fields: [memoryId], references: [id], onDelete: Cascade)
+  feedback    AiFeedback[]
+  createdAt   DateTime @default(now())
+
+  @@unique([memoryId, sourceType, sourceId])
+  @@index([sourceType, sourceId])
+}
+
+model AiPlaybook {
+  id        String          @id @default(cuid())
+  ownerId   String
+  scope     AiMemoryScope
+  state     AiPlaybookState @default(DRAFT)
+  name      String
+  owner     User            @relation("AiPlaybookOwner", fields: [ownerId], references: [id])
+  versions  AiPlaybookVersion[]
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([ownerId, state])
+}
+
+model AiPlaybookVersion {
+  id                      String   @id @default(cuid())
+  playbookId              String
+  version                 Int
+  normalizedInstructions  String   @db.Text
+  triggerRulesJson        String   @db.Text
+  contextRequirementsJson String   @db.Text
+  capabilityAllowlistJson String   @db.Text
+  approvalOverridesJson   String   @db.Text
+  checksum                String
+  playbook                AiPlaybook @relation(fields: [playbookId], references: [id], onDelete: Cascade)
+  evaluations             AiPlaybookEvaluation[]
+  createdAt               DateTime @default(now())
+
+  @@unique([playbookId, version])
+}
+
+model AiPlaybookEvaluation {
+  id                String             @id @default(cuid())
+  playbookVersionId String
+  status            String
+  resultJson        String             @db.Text
+  playbookVersion   AiPlaybookVersion  @relation(fields: [playbookVersionId], references: [id], onDelete: Cascade)
+  createdAt         DateTime           @default(now())
+
+  @@index([playbookVersionId, status])
+}
+
+model AiFeedback {
+  id               String            @id @default(cuid())
+  outcome          AiFeedbackOutcome
+  contextJson      String            @db.Text
+  proposedDiffHash String?
+  finalDiffHash    String?
+  workflowId       String?
+  approvalId       String?
+  conversationId   String?
+  messageId        String?
+  sourceId         String?
+  actorId          String?
+  workflow         AiWorkflow?       @relation("AiWorkflowFeedback", fields: [workflowId], references: [id], onDelete: SetNull)
+  approval         AiApproval?       @relation("AiApprovalFeedback", fields: [approvalId], references: [id], onDelete: SetNull)
+  conversation     AiConversation?   @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  message          AiMessage?        @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  source           AiMemorySource?   @relation(fields: [sourceId], references: [id], onDelete: SetNull)
+  actor            User?             @relation("AiFeedbackActor", fields: [actorId], references: [id], onDelete: SetNull)
+  createdAt        DateTime          @default(now())
+
+  @@index([outcome, createdAt])
+  @@index([conversationId, createdAt])
+}
+
+model AiConversationSummary {
+  id                  String   @id @default(cuid())
+  conversationId      String
+  version             Int
+  startMessageId      String
+  endMessageId        String
+  protectedStateJson   String   @db.Text
+  sourceMessageIdsJson String  @db.Text
+  supersededById      String?
+  conversation        AiConversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  startMessage        AiMessage @relation("SummaryStartMessage", fields: [startMessageId], references: [id])
+  endMessage          AiMessage @relation("SummaryEndMessage", fields: [endMessageId], references: [id])
+  supersededBy        AiConversationSummary? @relation("SummarySupersession", fields: [supersededById], references: [id], onDelete: SetNull)
+  supersedes          AiConversationSummary[] @relation("SummarySupersession")
+  createdAt           DateTime @default(now())
+
+  @@unique([conversationId, version])
+}
+
+/// A parsed file upload waiting for Sabah to turn into tasks. Parsed content
+/// only — the original binary is never stored.
+model AiIntake {
+  id        String   @id @default(cuid())
+  userId    String
+  filename  String
+  kind      String // "rows" (tabular) | "text" (document)
+  rowsJson  String?  @db.Text // JSON: { headers: string[], rows: Record<string,string>[] }
+  text      String?  @db.Text // extracted text for text-kind files
+  rowCount  Int      @default(0)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+}
+
+/// Metadata and retention record for a multimodal input asset. The original
+/// binary is kept outside the database; storageKey is intentionally nullable
+/// for local-only processing.
+model AiAsset {
+  id             String   @id @default(cuid())
+  ownerId        String?
+  filename       String
+  mimeType       String
+  byteCount      Int
+  checksum       String
+  storageKey     String?
+  retentionUntil DateTime?
+  metadataJson   String?  @db.Text
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  owner          User?              @relation("AiAssetOwner", fields: [ownerId], references: [id], onDelete: SetNull)
+  sourceBlocks   AiSourceBlock[]
+  extractionRuns AiExtractionRun[]
+
+  @@index([ownerId, createdAt])
+  @@index([checksum])
+}
+
+model AiSourceBlock {
+  id             String             @id @default(cuid())
+  assetId        String
+  kind           AiSourceBlockKind
+  text           String             @db.Text
+  layoutJson     String?            @db.Text
+  page           Int?
+  timeStartMs    Int?
+  timeEndMs      Int?
+  boundingBoxJson String?            @db.Text
+  confidence     Float
+  engine         String
+  engineVersion  String
+  checksum       String
+  reviewed       Boolean            @default(false)
+  createdAt      DateTime           @default(now())
+
+  asset          AiAsset            @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@index([assetId, page])
+  @@index([assetId, reviewed])
+}
+
+model AiExtractionRun {
+  id             String             @id @default(cuid())
+  assetId        String
+  actorId        String?
+  requestedMode  AiProcessingMode
+  effectiveMode  AiProcessingMode
+  engine         String
+  provider       String
+  model          String
+  metricsJson    String             @db.Text
+  status         AiExtractionStatus
+  errorCode      String?
+  consentId      String?
+  createdAt      DateTime           @default(now())
+  updatedAt      DateTime           @updatedAt
+  startedAt      DateTime?
+  completedAt    DateTime?
+
+  asset          AiAsset            @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  actor          User?              @relation("AiExtractionRunActor", fields: [actorId], references: [id], onDelete: SetNull)
+  consent        AiProcessingConsent? @relation(fields: [consentId], references: [id], onDelete: SetNull)
+
+  @@index([assetId, createdAt])
+  @@index([actorId, createdAt])
+  @@index([status, createdAt])
+}
+
+model AiProcessingConsent {
+  id            String                       @id @default(cuid())
+  actorId       String
+  assetChecksum String
+  provider      String
+  purpose       String
+  expiresAt     DateTime
+  decision      AiProcessingConsentDecision
+  createdAt     DateTime                     @default(now())
+  updatedAt      DateTime                     @updatedAt
+
+  actor         User                         @relation("AiProcessingConsentActor", fields: [actorId], references: [id], onDelete: Cascade)
+  extractionRuns AiExtractionRun[]
+
+  @@index([actorId, createdAt])
+  @@index([assetChecksum, provider])
+  @@index([expiresAt, decision])
+}
+
+// ========================================================================
+// Sabah Capability Platform: Workflows, Providers, and Operational Logging
+// ========================================================================
+
+// Workflow status lifecycle
+enum AiWorkflowStatus {
+  PLANNED
+  AWAITING_APPROVAL
+  RUNNING
+  COMPLETED
+  FAILED
+  CANCELED
+}
+
+// Individual step status within a workflow
+enum AiWorkflowStepStatus {
+  PENDING
+  APPROVAL_REQUIRED
+  RUNNING
+  VERIFIED
+  FAILED
+  BLOCKED
+  SKIPPED
+}
+
+// Approval decision lifecycle
+enum AiApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  EXPIRED
+}
+
+// Provider deployment kind
+enum AiProviderKind {
+  LOCAL
+  CLOUD
+}
+
+// Model role classification
+enum AiModelRole {
+  CHAT
+  PLANNER
+  CRITIC
+  COMPRESSION
+  VISION
+  OCR
+  ASR
+  EMBEDDING
+}
+
+enum AiJobStatus {
+  QUEUED
+  LEASED
+  RUNNING
+  WAITING_APPROVAL
+  RETRY_WAIT
+  SUCCEEDED
+  FAILED
+  CANCELED
+}
+
+enum AiJobType {
+  WORKFLOW_STEP
+  COMPRESSION
+  INDEX_ENTITY
+  MONITOR
+  CONNECTOR_DELIVERY
+  SPECIALIST_ANALYSIS
+  EXTRACTION
+}
+
+enum AiJobAttemptStatus {
+  LEASED
+  RUNNING
+  SUCCEEDED
+  FAILED
+  CANCELED
+}
+
+enum AiMonitorStatus {
+  ACTIVE
+  PAUSED
+  ERROR
+}
+
+enum AiSuggestionState {
+  OPEN
+  SNOOZED
+  DISMISSED
+  ACCEPTED
+  EXPIRED
+}
+
+enum AiSuggestionSeverity {
+  INFO
+  WARNING
+  CRITICAL
+}
+
+enum AiConnectorDirection {
+  INBOUND
+  OUTBOUND
+  BIDIRECTIONAL
+}
+
+enum AiWebhookDeliveryStatus {
+  PENDING
+  DELIVERED
+  FAILED
+  RETRY_WAIT
+  CANCELED
+}
+
+// Orchestrated multi-step AI workflow with idempotency and audit trail
+model AiWorkflow {
+  id              String      @id @default(cuid())
+  idempotencyKey  String      @unique
+  recordVersion   Int         @default(1)
+
+  goal            String
+  status          AiWorkflowStatus @default(PLANNED)
+  parentWorkflowId String?
+
+  // Actor and conversation context
+  actorId         String?
+  actor           User?       @relation("AiWorkflowActor", fields: [actorId], references: [id])
+  conversationId  String?
+
+  // Retry and correlation tracking
+  retryCount      Int         @default(0)
+  correlationId   String?     @unique
+
+  // Timestamps
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  startedAt       DateTime?
+  completedAt     DateTime?
+
+  steps           AiWorkflowStep[]
+  events          AiWorkflowEvent[]
+  approvals       AiApproval[]
+  operationalLogs AiOperationalLog[]
+  feedbacks       AiFeedback[] @relation("AiWorkflowFeedback")
+  jobs            AiJob[]
+
+  @@index([actorId, status])
+  @@index([status, createdAt])
+  @@index([correlationId])
+  @@index([parentWorkflowId])
+}
+
+// Individual workflow step with dependency graph and capability execution state
+model AiWorkflowStep {
+  id               String             @id @default(cuid())
+  workflowId       String
+  workflow         AiWorkflow         @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  clientStepId     String             // Stable client-provided identifier (must be unique within workflow)
+  capability       String             // e.g., "projects.create"
+  capabilityVersion Int?
+  status           AiWorkflowStepStatus @default(PENDING)
+
+  // Step inputs and outputs as bounded JSON
+  argsJson         String             @db.Text // JSON: capability arguments
+  previewJson      String?            @db.Text // JSON: approval preview (title, summary, fields, warnings)
+  outputJson       String?            @db.Text // JSON: execution result (bounded summary + entity links)
+  errorJson        String?            @db.Text // JSON: error details
+
+  // Dependency graph (client step IDs, not DB IDs)
+  dependsOnJson    String             @db.Text // JSON: string[] of client step IDs
+
+  // Confidence and metadata
+  confidence       Float
+  inferredFieldsJson String?          @db.Text // JSON: string[] of field names inferred from context
+  evidenceRefsJson String?            @db.Text // JSON: string[] of evidence references
+
+  // Retry and verification
+  retryCount       Int                @default(0)
+  verifiedAt       DateTime?
+
+  // Timestamps
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+  startedAt        DateTime?
+  completedAt      DateTime?
+
+  approvals        AiApproval[]
+  events           AiWorkflowEvent[]
+  jobs            AiJob[]
+
+  @@unique([workflowId, clientStepId])
+  @@index([workflowId, status])
+  @@index([clientStepId])
+}
+
+// Workflow lifecycle events for audit and debugging
+model AiWorkflowEvent {
+  id          String      @id @default(cuid())
+  workflowId  String
+  workflow    AiWorkflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  stepId      String?
+  step        AiWorkflowStep? @relation(fields: [stepId], references: [id], onDelete: SetNull)
+
+  eventType   String      // e.g., "WORKFLOW_CREATED", "STEP_STARTED", "APPROVAL_GRANTED", "ERROR"
+  level       String      @default("INFO") // DEBUG, INFO, WARN, ERROR
+  message     String
+  metadataJson String?    @db.Text // JSON: structured event details
+
+  createdAt   DateTime    @default(now())
+
+  @@index([workflowId, createdAt])
+  @@index([stepId, createdAt])
+  @@index([eventType])
+  @@index([createdAt])
+}
+
+// Human approval gates for high-risk operations
+model AiApproval {
+  id            String             @id @default(cuid())
+  workflowId    String
+  workflow      AiWorkflow         @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  stepId        String?
+  step          AiWorkflowStep?    @relation(fields: [stepId], references: [id], onDelete: SetNull)
+
+  status        AiApprovalStatus   @default(PENDING)
+
+  // Approval preview (copied from step at snapshot time)
+  title         String
+  summary       String?
+  risk          String             // CapabilityRisk enum value
+  fieldsJson    String?            @db.Text // JSON: Array<{path, current?, proposed?}>
+  warningsJson  String?            @db.Text // JSON: string[]
+
+  // Actor and decision
+  requestedById String?
+  requestedBy   User?              @relation("ApprovalRequested", fields: [requestedById], references: [id])
+  decidedById   String?
+  decidedBy     User?              @relation("ApprovalDecided", fields: [decidedById], references: [id])
+  decisionType  String?            // APPROVE, REJECT, CLARIFY
+  decisionReason String?           @db.Text
+
+  // Expiration
+  expiresAt     DateTime
+
+  // Timestamps
+  createdAt     DateTime           @default(now())
+  decidedAt     DateTime?
+
+  @@index([workflowId, status])
+  @@index([stepId, status])
+  @@index([requestedById, status])
+  @@index([decidedById, status])
+  @@index([expiresAt])
+  feedbacks     AiFeedback[] @relation("AiApprovalFeedback")
+}
+
+// Operational logs with configurable retention (e.g., 90 days)
+model AiOperationalLog {
+  id              String      @id @default(cuid())
+  workflowId      String
+  workflow        AiWorkflow  @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+
+  category        String      // e.g., "CAPABILITY_CALL", "PROVIDER_REQUEST", "SECURITY_EVENT"
+  level           String      @default("INFO") // DEBUG, INFO, WARN, ERROR, CRITICAL
+  message         String
+  correlationId   String      @default("")
+  metadataJson    String?     @db.Text // JSON: structured context
+
+  // Expiry for log rotation
+  expiresAt       DateTime
+
+  createdAt       DateTime    @default(now())
+
+  @@index([workflowId, category])
+  @@index([correlationId])
+  @@index([level, createdAt])
+  @@index([expiresAt])
+  @@index([createdAt])
+}
+
+// Encrypted provider credentials (API keys, tokens) with key versioning
+model AiProviderCredential {
+  id            String        @id @default(cuid())
+  providerKey   String        @unique // e.g., "openai", "anthropic", "local-llm"
+
+  // Encrypted credential fields (AES-256-GCM)
+  encryptedValue String       @db.Text
+  iv            String        @db.Text // Initialization vector (base64)
+  authTag       String        @db.Text // GCM authentication tag (base64)
+
+  // Key version for rotation
+  keyVersion    Int           @default(1)
+
+  // One-level rotation history so rollback can restore the last-known-good
+  // value without violating the unique providerKey constraint.
+  previousEncryptedValue String? @db.Text
+  previousIv             String? @db.Text
+  previousAuthTag        String? @db.Text
+  previousKeyVersion     Int?
+
+  // Audit and lifecycle
+  isEnabled     Boolean       @default(true)
+  createdBy     String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  @@index([providerKey])
+  @@index([isEnabled])
+}
+
+// Model role assignment (one unique row per role)
+model AiModelAssignment {
+  id            String       @id @default(cuid())
+  role          AiModelRole  @unique // One row per role
+
+  providerKey   String       // Reference to AiProviderCredential.providerKey
+  modelName     String       // e.g., "gpt-4o", "claude-3-5-sonnet"
+
+  // Model configuration
+  configJson    String?      @db.Text // JSON: temperature, maxTokens, etc.
+
+  // Audit
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  @@index([providerKey])
+}
+
+/// Provider-neutral searchable content for one workspace entity.
+model AiKnowledgeChunk {
+  id              String    @id @default(cuid())
+  entityType      String    @db.VarChar(64)
+  entityId        String    @db.VarChar(128)
+  chunkKind       String    @db.VarChar(64)
+  text            String    @db.VarChar(12000)
+  normalizedText  String    @db.VarChar(12000)
+  checksum        String    @db.VarChar(128)
+  sourceUpdatedAt DateTime
+  visibilityClass String    @db.VarChar(64)
+  staleAt         DateTime?
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  embeddings AiEmbeddingVector[]
+
+  @@unique([entityType, entityId, chunkKind])
+  @@index([entityType, entityId])
+  @@index([sourceUpdatedAt])
+  @@index([visibilityClass, staleAt, deletedAt])
+}
+
+/// Source freshness fingerprint for one workspace entity facet.
+model AiEntityFingerprint {
+  id              String    @id @default(cuid())
+  entityType      String    @db.VarChar(64)
+  entityId        String    @db.VarChar(128)
+  kind            String    @db.VarChar(64)
+  fingerprint     String    @db.VarChar(128)
+  sourceUpdatedAt DateTime
+  staleAt         DateTime?
+  deletedAt       DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([entityType, entityId, kind])
+  @@index([fingerprint])
+  @@index([entityType, entityId])
+  @@index([sourceUpdatedAt])
+  @@index([staleAt, deletedAt])
+}
+
+/// Provider/model-specific embedding payload for a knowledge chunk.
+model AiEmbeddingVector {
+  id          String           @id @default(cuid())
+  chunkId     String
+  providerKey String           @db.VarChar(64)
+  modelName   String           @db.VarChar(128)
+  dimension   Int
+  vectorJson  String           @db.VarChar(12000)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  chunk AiKnowledgeChunk @relation(fields: [chunkId], references: [id], onDelete: Cascade)
+
+  @@unique([chunkId, providerKey, modelName])
+  @@index([chunkId])
+  @@index([providerKey, modelName])
+}
+
+model AiJob {
+  id              String       @id @default(cuid())
+  type            AiJobType
+  status          AiJobStatus   @default(QUEUED)
+  priority        Priority      @default(MEDIUM)
+  idempotencyKey  String        @unique @db.VarChar(255)
+  actorId         String?
+  workflowId      String?
+  stepId          String?
+  payloadJson     String?       @db.Text
+  checkpointJson  String?       @db.Text
+  leaseOwner      String?       @db.VarChar(255)
+  leaseToken      String?       @db.VarChar(255)
+  leaseUntil      DateTime?
+  heartbeatAt     DateTime?
+  retryCount      Int           @default(0)
+  maxAttempts     Int           @default(3)
+  nextAttemptAt   DateTime?
+  canceledAt      DateTime?
+  cancelRequestedAt DateTime?
+  resultJson       String?       @db.Text
+  errorJson       String?       @db.Text
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+  actor           User?         @relation("AiJobActor", fields: [actorId], references: [id], onDelete: SetNull)
+  workflow        AiWorkflow?   @relation(fields: [workflowId], references: [id], onDelete: SetNull)
+  step            AiWorkflowStep? @relation(fields: [stepId], references: [id], onDelete: SetNull)
+  attempts        AiJobAttempt[]
+  @@index([actorId, status])
+  @@index([status, leaseUntil])
+  @@index([status, nextAttemptAt])
+}
+
+model AiJobAttempt {
+  id             String              @id @default(cuid())
+  jobId          String
+  attemptNumber  Int
+  workerId       String?             @db.VarChar(255)
+  leaseToken     String?             @db.VarChar(255)
+  leasedAt       DateTime?
+  startedAt      DateTime?
+  finishedAt     DateTime?
+  status         AiJobAttemptStatus
+  checkpointJson String?              @db.Text
+  resultJson     String?              @db.Text
+  errorJson      String?              @db.Text
+  createdAt      DateTime             @default(now())
+  job            AiJob               @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  @@unique([jobId, attemptNumber])
+  @@index([status, leasedAt])
+}
+
+model AiMonitor {
+  id             String          @id @default(cuid())
+  key            String          @unique @db.VarChar(128)
+  name           String          @db.VarChar(255)
+  enabled        Boolean         @default(true)
+  schedule       String          @db.VarChar(255)
+  scope          AiMemoryScope
+  definitionJson String          @db.Text
+  createdById    String?
+  status         AiMonitorStatus @default(ACTIVE)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  createdBy      User?           @relation("AiMonitorCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  state          AiMonitorState?
+  suggestions    AiSuggestion[]
+  @@index([enabled, status])
+}
+
+model AiMonitorState {
+  id               String    @id @default(cuid())
+  monitorId        String    @unique
+  lastRunAt        DateTime?
+  sourceFingerprint String?   @db.VarChar(255)
+  nextRunAt        DateTime?
+  lastError        String?   @db.VarChar(2000)
+  monitor          AiMonitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  @@index([nextRunAt])
+}
+
+model AiSuggestion {
+  id            String               @id @default(cuid())
+  monitorId     String
+  fingerprint   String               @db.VarChar(255)
+  severity      AiSuggestionSeverity
+  title         String               @db.VarChar(255)
+  summary       String               @db.VarChar(4000)
+  evidenceJson  String               @db.Text
+  state         AiSuggestionState    @default(OPEN)
+  snoozedUntil  DateTime?
+  dismissedAt   DateTime?
+  cooldownUntil DateTime?
+  actorId       String?
+  scope         AiMemoryScope
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  monitor       AiMonitor            @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  actor         User?                @relation("AiSuggestionActor", fields: [actorId], references: [id], onDelete: SetNull)
+  @@unique([monitorId, fingerprint])
+  @@index([state, fingerprint])
+  @@index([actorId, scope])
+}
+
+model AiConnector {
+  id          String                @id @default(cuid())
+  key         String                @db.VarChar(128)
+  version     Int
+  kind        String                @db.VarChar(128)
+  direction   AiConnectorDirection
+  enabled     Boolean               @default(true)
+  eventType   String                @db.VarChar(255)
+  capability  String                @db.VarChar(255)
+  dataPolicy  String                @db.VarChar(2000)
+  configJson  String?               @db.Text
+  createdById String?
+  createdAt   DateTime              @default(now())
+  updatedAt   DateTime              @updatedAt
+  createdBy   User?                 @relation("AiConnectorCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  credential  AiConnectorCredential?
+  deliveries  AiWebhookDelivery[]
+  @@unique([key, version])
+  @@index([enabled])
+}
+
+model AiConnectorCredential {
+  id              String      @id @default(cuid())
+  connectorId     String      @unique
+  encryptedValue  String      @db.Text
+  iv              String      @db.VarChar(255)
+  authTag         String      @db.VarChar(255)
+  keyVersion      Int         @default(1)
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+  connector       AiConnector @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+}
+
+model AiWebhookDelivery {
+  id             String                  @id @default(cuid())
+  connectorId    String
+  eventType      String                  @db.VarChar(255)
+  replayKey      String                  @db.VarChar(255)
+  correlationId  String?                 @db.VarChar(255)
+  payloadHash    String                  @db.VarChar(255)
+  requestHash    String?                 @db.VarChar(255)
+  responseHash   String?                 @db.VarChar(255)
+  status         AiWebhookDeliveryStatus
+  attemptCount   Int                     @default(0)
+  nextAttemptAt  DateTime?
+  errorMessage   String?                 @db.VarChar(2000)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
+  deliveredAt    DateTime?
+  connector      AiConnector             @relation(fields: [connectorId], references: [id], onDelete: Cascade)
+  @@unique([connectorId, replayKey])
+  @@index([status, nextAttemptAt])
+  @@index([replayKey])
+}
+
+// Durable capability execution results keyed by idempotency key, backing
+// idempotent replay and compensation tracking in the capability runner.
+model AiCapabilityResult {
+  id            String    @id @default(cuid())
+  key           String    @unique
+  state         String    @db.VarChar(64)
+  outputJson    String?   @db.Text
+  compensatedAt DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  @@index([createdAt])
+}
+
+enum DeliveryState {
+  PENDING
+  SENDING
+  ACCEPTED
+  DELIVERED
+  FAILED
+  BOUNCED
+  SUPPRESSED
+  EXPIRED
+}
+
+model NotificationEvent {
+  id              String     @id @default(cuid())
+  // FK to Workspace lands with the workspace foundation migration (W01)
+  workspaceId     String
+  sourceType      String
+  sourceId        String
+  sourceVersion   String
+  category        String
+  recipientUserId String
+  dedupeKey       String     @unique
+  createdAt       DateTime   @default(now())
+  expiresAt       DateTime?
+  deliveries      Delivery[]
+}
+
+model Delivery {
+  id              String           @id @default(cuid())
+  eventId         String
+  event           NotificationEvent @relation(fields: [eventId], references: [id])
+  channel         String
+  destinationKey  String
+  state           DeliveryState    @default(PENDING)
+  attempts        Int              @default(0)
+  nextAttemptAt   DateTime?
+  leaseUntil      DateTime?
+  providerId      String?
+  lastError       String?
+  acceptedAt      DateTime?
+  deliveredAt     DateTime?
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+
+  @@unique([eventId, channel, destinationKey])
+}
+
+/// P04: encrypted browser push subscription values; endpointHash is the only searchable endpoint data.
+model PushSubscription {
+  id                 String   @id @default(cuid())
+  userId             String
+  user               User     @relation(fields: [userId], references: [id])
+  installationId     String
+  endpointEncrypted  String
+  endpointHash       String   @unique
+  p256dhEncrypted    String
+  authEncrypted      String
+  keyVersion         String   @default("v1")
+  enabled            Boolean  @default(true)
+  createdAt          DateTime @default(now())
+  lastSeenAt         DateTime @default(now())
+  revokedAt          DateTime?
+
+  @@index([userId])
+}
+
+// ==== identity reconciliation ====
+model UserIdentityAlias {
+  id              String   @id @default(cuid())
+  sourceUserId    String   @unique
+  sourceUser      User     @relation("aliasSource", fields: [sourceUserId], references: [id])
+  canonicalUserId String
+  canonicalUser   User     @relation("aliasCanonical", fields: [canonicalUserId], references: [id])
+  approvedById    String
+  approvedBy      User     @relation("aliasApprovedBy", fields: [approvedById], references: [id])
+  approvedAt      DateTime @default(now())
+  reason          String
+  createdAt       DateTime @default(now())
+}
+
+model NotificationPreference {
+  id               String   @id @default(cuid())
+  userId           String
+  user             User     @relation(fields: [userId], references: [id])
+  category         String
+  emailEnabled     Boolean  @default(true)
+  inAppEnabled     Boolean  @default(true)
+  pushEnabled      Boolean  @default(false)
+  quietEnabled     Boolean  @default(false)
+  quietStartMinute Int?
+  quietEndMinute   Int?
+  timezone         String   @default("Asia/Riyadh")
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@unique([userId, category])
+}
+
+model Workspace {
+  id         String   @id @default(cuid())
+  slug       String   @unique
+  name       String
+  timezone   String   @default("Asia/Riyadh")
+  archivedAt DateTime?
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  members         WorkspaceMember[]
+  tasks           Task[]
+  projects        Project[]
+  kpis            KPI[]
+  notePages       NotePage[]
+  caseStudies     CaseStudy[]
+  weeklyReports   WeeklyReport[]
+  supportRequests SupportRequest[]
+  announcements   Announcement[]
+  departments     Department[]
+}
+
+model WorkspaceMember {
+  id          String        @id @default(cuid())
+  workspaceId String
+  workspace   Workspace     @relation(fields: [workspaceId], references: [id])
+  userId      String
+  user        User          @relation(fields: [userId], references: [id])
+  role        WorkspaceRole @default(MEMBER)
+  active      Boolean       @default(true)
+  joinedAt    DateTime      @default(now())
+
+  @@unique([workspaceId, userId])
+}
+
+model TaskSubscriber {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  createdAt DateTime @default(now())
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([taskId, userId])
+}
+
+model CommentReaction {
+  id        String   @id @default(cuid())
+  commentId String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId, emoji])
+}
+
+model CommentRead {
+  id        String   @id @default(cuid())
+  commentId String
+  userId    String
+  readAt    DateTime @default(now())
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+}
+
+model CustomField {
+  id        String   @id @default(cuid())
+  projectId String
+  key       String
+  label     String
+  type      String
+  config    Json     @default("{}")
+  order     Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  project Project             @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  values  CustomFieldValue[]
+
+  @@unique([projectId, key])
+}
+
+model CustomFieldValue {
+  id      String @id @default(cuid())
+  fieldId String
+  taskId  String
+  value   Json?
+
+  field CustomField @relation(fields: [fieldId], references: [id], onDelete: Cascade)
+  task  Task        @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@unique([fieldId, taskId])
+}

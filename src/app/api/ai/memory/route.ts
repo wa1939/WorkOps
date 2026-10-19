@@ -1,0 +1,9 @@
+import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
+import { toSabahActor } from "@/lib/sabah/auth/actor";
+import { createLearningCapabilities, getLearningDependencies, learningContext, learningErrorResponse, memorySearchSchema, memoryProposeSchema } from "@/lib/sabah/capabilities/modules/learning";
+export const dynamic = "force-dynamic";
+const responseError = (error: unknown) => { const mapped = learningErrorResponse(error); return NextResponse.json(mapped.body, { status: mapped.status }); };
+const readJson = async (request: NextRequest): Promise<unknown> => request.json();
+export async function GET(request: NextRequest) { const session = await auth(); if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); try { const deps = getLearningDependencies(); const actor = await toSabahActor(session.user); const parsed = memorySearchSchema.parse({ query: request.nextUrl.searchParams.get("query") ?? undefined, limit: request.nextUrl.searchParams.get("limit") ? Number(request.nextUrl.searchParams.get("limit")) : undefined }); return NextResponse.json(await createLearningCapabilities(deps).memorySearch.execute(parsed, learningContext(actor))); } catch (error) { return responseError(error); } }
+export async function POST(request: NextRequest) { const session = await auth(); if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); try { const deps = getLearningDependencies(); const actor = await toSabahActor(session.user); const input = memoryProposeSchema.parse(await readJson(request)); const capability = createLearningCapabilities(deps).memoryPropose; const context = learningContext(actor); await capability.available(actor); await capability.authorize(input, context); return NextResponse.json(await capability.execute(input, context), { status: 201 }); } catch (error) { return responseError(error); } }

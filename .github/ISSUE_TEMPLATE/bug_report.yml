@@ -1,0 +1,81 @@
+name: Bug report
+description: Report something that does not work as expected
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thank you for taking the time to file a bug. Please fill in the details below — the environment section matters more than you think.
+  - type: textarea
+    id: what-happened
+    attributes:
+      label: What happened?
+      description: A clear description of the bug, including what you expected to happen instead.
+    validations:
+      required: true
+  - type: textarea
+    id: repro
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Sign in as …
+        2. Open …
+        3. Click …
+        4. See error
+    validations:
+      required: true
+  - type: dropdown
+    id: deployment
+    attributes:
+      label: Deployment type
+      options:
+        - Local development (npm run dev)
+        - Self-hosted (Docker)
+        - Self-hosted (bare server / Node process)
+        - Vercel
+        - Other
+    validations:
+      required: true
+  - type: input
+    id: version
+    attributes:
+      label: Commit or version
+      description: The commit hash you are running (git rev-parse --short HEAD), or the deployed version.
+    validations:
+      required: true
+  - type: dropdown
+    id: database
+    attributes:
+      label: Database
+      options:
+        - PostgreSQL 16
+        - PostgreSQL 15
+        - PostgreSQL 14
+        - Other / older
+    validations:
+      required: false
+  - type: dropdown
+    id: browser
+    attributes:
+      label: Browser (for UI issues)
+      options:
+        - Chrome / Edge
+        - Firefox
+        - Safari
+        - Not applicable
+    validations:
+      required: false
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs or console output
+      render: shell
+    validations:
+      required: false
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots
+      description: For UI issues, attach screenshots. Redact any real names or data before attaching.
+    validations:
+      required: false

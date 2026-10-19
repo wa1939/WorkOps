@@ -1,0 +1,35 @@
+# Keep the build context small and secret-free.
+# Never let real environment files enter image build layers.
+
+.git
+.gitignore
+.claude
+.playwright-cli
+.superpowers
+
+# Local secrets — must never be COPY'd into a build stage
+.env
+.env.*
+!.env.example
+
+# Build/test artifacts not needed inside the image
+node_modules
+.next
+.vercel
+coverage
+test-results
+playwright-report
+audit-screenshots
+
+# Docs, plans and research (docs live in the repo, not the runtime image)
+docs
+plans
+research
+e2e
+playwright*.ts
+
+# Local scratch and one-off artifacts
+*.log
+*.xlsx
+*.txt
+task-*.md

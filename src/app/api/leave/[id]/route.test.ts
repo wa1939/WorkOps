@@ -1,0 +1,6 @@
+import { describe, expect, it, vi } from "vitest";
+const mocks = vi.hoisted(() => ({ auth: vi.fn(), getMyLeave: vi.fn(), updateLeaveRequest: vi.fn() }));
+vi.mock("@/lib/auth", () => ({ auth: mocks.auth }));
+vi.mock("@/lib/leave/commands", () => ({ getMyLeave: mocks.getMyLeave, updateLeaveRequest: mocks.updateLeaveRequest, LeaveCommandError: class LeaveCommandError extends Error {} }));
+import { GET, PUT } from "./route";
+describe("/api/leave/:id", () => { it("keeps GET available while exposing PUT update adapter", async () => { mocks.auth.mockResolvedValue({ user: { id: "u1", role: "MEMBER" } }); mocks.getMyLeave.mockResolvedValue({ id: "l1" }); mocks.updateLeaveRequest.mockResolvedValue({ id: "l1", reason: "updated" }); const context = { params: Promise.resolve({ id: "l1" }) }; const getResponse = await GET(new Request("http://localhost/api/leave/l1"), context); const putResponse = await PUT(new Request("http://localhost/api/leave/l1", { method: "PUT", body: JSON.stringify({ reason: "updated" }) }), context); expect(getResponse.status).toBe(200); expect(putResponse.status).toBe(200); expect(mocks.updateLeaveRequest).toHaveBeenCalledWith(undefined, { id: "u1", role: "MEMBER" }, { id: "l1", reason: "updated" }); }); });

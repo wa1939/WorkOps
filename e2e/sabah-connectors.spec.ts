@@ -1,0 +1,32 @@
+import { test, expect, type Page } from "@playwright/test";
+import { createHmac } from "node:crypto";
+import { existsSync } from "node:fs";
+const enabled = process.env.SABAH_PLAN10_E2E === "1";
+const storageState = process.env.SABAH_PLAN10_STORAGE_STATE; const host = process.env.SABAH_PLAN10_RECEIVER_HOST; const path = process.env.SABAH_PLAN10_RECEIVER_PATH; const credential = process.env.SABAH_PLAN10_RECEIVER_CREDENTIAL; const webhookUrl = process.env.SABAH_PLAN10_WEBHOOK_URL; const deliveryUrl = process.env.SABAH_PLAN10_DELIVERY_LOG_URL; const inboundUrl = process.env.SABAH_PLAN10_INBOUND_SUGGESTIONS_URL;
+if (storageState && existsSync(storageState)) test.use({ storageState });
+type Obj = Record<string, unknown>; const fail = (m: string): Error => new Error(`Plan10 E2E provisioning error: ${m}`);
+const obj = (v: unknown, label: string): Obj => { if (typeof v !== "object" || v === null || Array.isArray(v)) throw fail(`${label} is malformed`); return Object.fromEntries(Object.entries(v)); };
+async function body(response: import("@playwright/test").APIResponse, label: string): Promise<unknown> { if (!response.ok()) throw fail(`${label} returned HTTP ${response.status()}`); try { return JSON.parse(await response.text()); } catch { throw fail(`${label} returned malformed JSON`); } }
+type SignedRequest = { body: string; headers: Record<string, string> };
+async function signed(page: Page, payload: Obj, eventId: string): Promise<{ status: number; body: Obj; request: SignedRequest }> { const text = JSON.stringify(payload); const timestamp = Math.floor(Date.now() / 1000).toString(); const secret = credential; if (!secret) throw fail("receiver credential is missing"); const headers = { "content-type": "application/json", "x-sabah-timestamp": timestamp, "x-sabah-signature": `sha256=${createHmac("sha256", secret).update(`${timestamp}.${text}`).digest("hex")}`, "x-sabah-event-id": eventId }; const response = await page.request.post(webhookUrl ?? "", { data: text, headers }); return { status: response.status(), body: obj(await response.json(), `webhook ${eventId}`), request: { body: text, headers } }; }
+function assertNoExecution(value: unknown): void { if (typeof value === "object" && value !== null) { for (const [key, item] of Object.entries(value)) { if (key === "capabilityExecuted" && item === true) throw new Error("connector path executed a capability"); assertNoExecution(item); } } else if (Array.isArray(value)) value.forEach(assertNoExecution); }
+function assertSafeLogs(value: unknown, secret: string): void { const text = JSON.stringify(value); expect(text).not.toContain(secret); expect(text).not.toContain("private-sensitive-marker"); expect(text).not.toContain("restricted-sensitive-marker"); expect(text).not.toMatch(/password|api[_-]?key|authorization:\s*bearer/i); }
+
+test.describe("Sabah connector security contract", () => {
+  test.skip(!enabled, "SABAH_PLAN10_E2E is not enabled");
+  test("configures registered webhook, proves exact replay safety, and rejects unsafe inbound events", async ({ page }) => {
+    if (process.env.SABAH_PLAN10_LOCAL_RUNTIME !== "1" || !storageState || !existsSync(storageState) || !host || !path || !credential || !webhookUrl || !deliveryUrl || !inboundUrl) throw fail("runtime, authenticated state, receiver, credential, webhook, delivery, and suggestion URLs are required");
+    await page.goto("/admin/agents");
+    const configured = obj(await body(await page.request.post("/api/admin/ai/connectors", { data: { key: "sabah.webhook", version: 1, kind: "webhook", direction: "BIDIRECTIONAL", eventType: "step.completed", capability: "tasks.create", dataPolicy: "INTERNAL", config: { host, path }, credential, enabled: true } }), "connector registration"), "connector registration");
+    const connector = obj(configured.connector, "connector"); expect(connector.key).toBe("sabah.webhook"); expect(typeof connector.id).toBe("string"); assertSafeLogs(configured, credential);
+    const connectorId = connector.id; if (typeof connectorId !== "string" || connectorId.length === 0) throw fail("connector id is malformed");
+    const testResult = await body(await page.request.post(`/api/admin/ai/connectors/${encodeURIComponent(connectorId)}/test`), "connector test"); expect(obj(testResult, "connector test").code).toBe("delivered"); assertSafeLogs(testResult, credential); assertNoExecution(testResult);
+    const allowed = await signed(page, { event: "step.completed", eventId: "event:task-1", payload: { sourceId: "task:1" } }, "event:task-1"); expect(allowed.status).toBe(202); expect(allowed.body.code).toBe("accepted");
+    const replayResponse = await page.request.post(webhookUrl, { data: allowed.request.body, headers: allowed.request.headers }); expect(replayResponse.status()).toBe(409); expect((await replayResponse.json()).code).toBe("replay");
+    const bad = await page.request.post(webhookUrl, { data: JSON.stringify({ event: "step.completed", eventId: "event:bad" }), headers: { "content-type": "application/json", "x-sabah-timestamp": Math.floor(Date.now() / 1000).toString(), "x-sabah-signature": "sha256=invalid", "x-sabah-event-id": "event:bad" } }); expect(bad.status()).toBe(400); expect((await bad.json()).code).toBe("invalid_signature");
+    const disallowed = await signed(page, { event: "not.allowed", eventId: "event:no", payload: {} }, "event:no"); expect(disallowed.status).toBe(400); expect(disallowed.body.code).toBe("event_not_allowed");
+    for (const [eventId, marker, classification] of [["event:restricted", "restricted-sensitive-marker", "restricted"], ["event:private", "private-sensitive-marker", "private"] as const]) { const rejected = await signed(page, { event: "step.completed", eventId, payload: { classification, marker } }, eventId); expect(rejected.status).toBe(400); expect(rejected.body.code).toBe("invalid_payload"); }
+    const delivery = await body(await page.request.get(deliveryUrl), "delivery log"); const deliveryRecord = Array.isArray(delivery) ? delivery : [delivery]; expect(deliveryRecord.length).toBeGreaterThan(0); expect(JSON.stringify(delivery)).toMatch(/event:task-1|evt-1/); assertSafeLogs(delivery, credential); assertNoExecution(delivery);
+    const inbound = await body(await page.request.get(inboundUrl), "inbound suggestions"); assertSafeLogs(inbound, credential); assertNoExecution(inbound); if (Array.isArray(inbound)) for (const item of inbound) expect(obj(item, "inbound suggestion").status).toMatch(/DRAFT|OPEN/);
+  });
+});

@@ -1,0 +1,1 @@
+ALTER TABLE "AiJob" ADD COLUMN "cancelRequestedAt" TIMESTAMP(3);
