@@ -1,4 +1,8 @@
 import { NextResponse } from "next/server";
+import { assignmentHasCredential, configuredAiTarget, hasConfiguredAi } from "@/lib/ai/provider-config";
+import { DEFAULT_OPERATIONAL_MODEL } from "@/lib/ai/provider-resolution";
+import { resolveModelForRole } from "@/lib/sabah/providers/roles";
+import { resolveRuntimeProviderCredentials, type RuntimeProviderCredentials } from "@/lib/sabah/providers/admin-service";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { sendSundayDigest } from "@/lib/email";
@@ -129,8 +133,26 @@ async function buildDigest(ownerId?: string): Promise<{
     weekEnd: Date;
     counts: DigestCounts;
 }> {
-    if (!process.env.GLM_API_KEY) {
-        throw new Error("GLM_API_KEY not configured");
+    // Availability preflight. Resolve the saved CHAT assignment before the
+    // gate: an assignment may select a provider whose stored or environment
+    // credential exists even when the deployment default (legacy GLM/Nuha
+    // keys) is unconfigured. Mirrors the chat route; lookup failures keep the
+    // safe default, and invalid assignments fail visibly downstream when
+    // generation re-resolves the target through the shared resolver.
+    let runtimeCredentials: RuntimeProviderCredentials = {};
+    try {
+        runtimeCredentials = await resolveRuntimeProviderCredentials();
+    } catch {
+        runtimeCredentials = {};
+    }
+    let chatAssignment: Awaited<ReturnType<typeof resolveModelForRole>> | null = null;
+    try {
+        chatAssignment = await resolveModelForRole("CHAT", prisma, { defaultTarget: configuredAiTarget() ?? DEFAULT_OPERATIONAL_MODEL });
+    } catch {
+        chatAssignment = null;
+    }
+    if (!hasConfiguredAi(runtimeCredentials) && !assignmentHasCredential(chatAssignment, runtimeCredentials)) {
+        throw new Error("AI provider not configured");
     }
 
     const now = new Date();

@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { configuredAiTarget } from "./provider-config";
 import type { AiProvider, GLMModel } from "@/lib/glm";
 import {
     resolveModelForRole,
@@ -40,18 +41,13 @@ export type OperationalAiDatabase = ModelAssignmentDb & {
     aiProviderCredential: NonNullable<Parameters<typeof resolveRuntimeProviderCredentials>[0]>["aiProviderCredential"];
 };
 
-// Keep this executable boundary explicit: these are the provider/model pairs
-// that the current GLM/Nuha adapter can actually send for CHAT.
-const SUPPORTED_OPERATIONAL_TARGETS: Readonly<Record<string, readonly string[]>> = {
-    zai: ["glm-5", "glm-5.3", "glm-5.3-flash", "glm-4.7", "glm-4.5", "glm-4.5-flash", "glm-4.5-air", "GLM-4.5-Flash"],
-    nuha: ["Nuha-2.1"],
-};
 
 function isSupportedOperationalTarget(providerKey: string, modelName: string): boolean {
-    return SUPPORTED_OPERATIONAL_TARGETS[providerKey]?.includes(modelName) ?? false;
+    return isSupportedModelTarget("CHAT", providerKey, modelName);
 }
 
 function automaticFallbacks(provider: AiProvider): ReadonlyArray<ModelTarget> {
+    if (provider !== "zai" && provider !== "nuha") return [];
     // Nuha is the ultimate fallback for the default GLM-first route. If an
     // administrator explicitly makes Nuha primary, retain a bounded GLM escape
     // hatch rather than recursively selecting Nuha again.
@@ -90,8 +86,9 @@ export function buildOperationalAiTarget(
     assignment: ModelAssignment | null,
     credentials: RuntimeProviderCredentials = {},
 ): OperationalAiTarget {
-    const providerKey = assignment?.providerKey ?? DEFAULT_OPERATIONAL_MODEL.providerKey;
-    const modelName = assignment?.modelName ?? DEFAULT_OPERATIONAL_MODEL.modelName;
+    const defaultTarget = assignment ? DEFAULT_OPERATIONAL_MODEL : configuredAiTarget() ?? DEFAULT_OPERATIONAL_MODEL;
+    const providerKey = assignment?.providerKey ?? defaultTarget.providerKey;
+    const modelName = assignment?.modelName ?? defaultTarget.modelName;
 
     if (!isSupportedOperationalTarget(providerKey, modelName)) {
         throw new Error(`Configured CHAT provider or model is unsupported: ${providerKey}/${modelName}`);
@@ -115,7 +112,7 @@ export function buildOperationalAiTarget(
 export async function resolveOperationalAiTarget(
     db: OperationalAiDatabase = prisma as unknown as OperationalAiDatabase,
 ): Promise<OperationalAiTarget> {
-    const assignment = await resolveModelForRole("CHAT", db, { defaultTarget: DEFAULT_OPERATIONAL_MODEL });
+    const assignment = await resolveModelForRole("CHAT", db, { defaultTarget: configuredAiTarget() ?? DEFAULT_OPERATIONAL_MODEL });
     let credentials: RuntimeProviderCredentials = {};
     try {
         credentials = await resolveRuntimeProviderCredentials(db);

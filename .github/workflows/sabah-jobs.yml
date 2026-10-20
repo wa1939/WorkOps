@@ -1,0 +1,26 @@
+name: Optional Sabah job recovery
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/5 * * * *"
+permissions:
+  contents: read
+concurrency:
+  group: sabah-job-recovery
+  cancel-in-progress: false
+jobs:
+  recover:
+    if: github.event_name == 'workflow_dispatch' || vars.SABAH_SCHEDULERS_ENABLED == 'true'
+    runs-on: ubuntu-latest
+    environment: sabah-schedulers
+    timeout-minutes: 3
+    steps:
+      - name: Recover expired job leases on the configured deployment
+        env:
+          APP_BASE_URL: ${{ secrets.APP_BASE_URL }}
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          test -n "$APP_BASE_URL" && test -n "$CRON_SECRET"
+          curl --fail --silent --show-error --max-time 120 --proto '=https' --output /dev/null \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "${APP_BASE_URL%/}/api/cron/sabah-jobs"

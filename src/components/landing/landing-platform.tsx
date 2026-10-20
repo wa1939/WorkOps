@@ -1,15 +1,15 @@
 import { brand } from "@/lib/brand";
 
 const stackFacts = [
-    { term: "Runtime", detail: "Next.js 14 (App Router) on Node.js" },
+    { term: "Runtime", detail: "Next.js 15 (App Router) on Node.js" },
     { term: "Database", detail: "PostgreSQL, schema managed by Prisma migrations" },
     {
         term: "Authentication",
-        detail: "NextAuth v5 — email + password, with Microsoft Entra ID for org sign-in",
+        detail: "NextAuth v5 — email + password, with optional Microsoft Entra ID for org sign-in",
     },
-    { term: "Email", detail: "Transactional mail through Resend" },
+    { term: "Email", detail: "Optional transactional mail through Resend" },
     { term: "Installable", detail: "PWA manifest and service worker for desktop and mobile" },
-    { term: "Access", detail: "Admin and member roles out of the box" },
+    { term: "Access", detail: "Admin, manager, member and viewer roles, plus scoped workspace membership" },
 ] as const;
 
 export function LandingPlatform() {

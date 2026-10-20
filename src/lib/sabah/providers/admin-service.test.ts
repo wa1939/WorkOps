@@ -24,7 +24,7 @@ describe("assignModelRole CHAT provider boundary", () => {
 
         await expect(assignModelRole(admin, {
             role: "CHAT",
-            providerKey: "openai",
+            providerKey: "unimplemented-provider",
             modelName: "gpt-4o-mini",
         }, db as never)).rejects.toBeInstanceOf(UnsupportedChatProviderError);
 
@@ -34,6 +34,9 @@ describe("assignModelRole CHAT provider boundary", () => {
     it.each([
         ["zai", "glm-5"],
         ["nuha", "Nuha-2.1"],
+        ["openai", "operator-model"],
+        ["anthropic", "operator-claude"],
+        ["openai-compatible", "private-model"],
     ])("allows the supported %s CHAT provider", async (providerKey, modelName) => {
         const db = database();
         db.aiModelAssignment.upsert.mockResolvedValue({
@@ -52,8 +55,8 @@ describe("assignModelRole CHAT provider boundary", () => {
 
 describe("assignModelRole COMPRESSION execution boundary", () => {
     it.each([
-        ["openai", "gpt-4o-mini"],
-        ["anthropic", "claude-3-5-sonnet"],
+        ["unimplemented-provider", "model"],
+        ["anthropic", "invalid model with spaces"],
         ["zai", "glm-5.3"],
     ])("rejects unsupported %s/%s before persistence", async (providerKey, modelName) => {
         const db = database();

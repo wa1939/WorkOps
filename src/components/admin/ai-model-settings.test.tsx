@@ -30,6 +30,17 @@ const api = {
 };
 
 describe("AiModelSettings", () => {
+    it("lets an admin select OpenAI and enter a model outside the example catalog", async () => {
+        const user = userEvent.setup();
+        render(<AiModelSettings api={api} />);
+        const select = await screen.findByLabelText(/Model for CHAT/i);
+        await user.selectOptions(select, "openai:gpt-4o-mini");
+        const input = screen.getByLabelText("Custom CHAT model");
+        await user.clear(input);
+        await user.type(input, "operator-selected-model");
+        await user.click(screen.getByRole("button", { name: "Save CHAT assignment" }));
+        expect(api.assignRole).toHaveBeenCalledWith("CHAT", "openai", "operator-selected-model", null);
+    });
     it("renders provider rows with masked hints only (never full keys)", async () => {
         render(<AiModelSettings api={api} />);
         expect(await screen.findByText("zai", { selector: "span" })).toBeVisible();
@@ -83,12 +94,12 @@ describe("AiModelSettings", () => {
         }
     });
 
-    it("does not offer providers without a CHAT runtime adapter for the CHAT role", async () => {
+    it("offers OpenAI for both supported text roles", async () => {
         render(<AiModelSettings api={api} />);
         const chatSelect = await screen.findByLabelText(/Model for CHAT/i) as HTMLSelectElement;
         const compressionSelect = screen.getByLabelText(/Model for COMPRESSION/i) as HTMLSelectElement;
-        expect(Array.from(chatSelect.options, (option) => option.value)).not.toContain("openai:gpt-4o-mini");
-        expect(Array.from(compressionSelect.options, (option) => option.value)).not.toContain("openai:gpt-4o-mini");
+        expect(Array.from(chatSelect.options, (option) => option.value)).toContain("openai:gpt-4o-mini");
+        expect(Array.from(compressionSelect.options, (option) => option.value)).toContain("openai:gpt-4o-mini");
         expect(Array.from(compressionSelect.options, (option) => option.value)).not.toContain("zai:glm-5.3");
     });
 

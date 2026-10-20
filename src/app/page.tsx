@@ -9,6 +9,8 @@ import { LandingHero } from "@/components/landing/landing-hero";
 import { LandingCapabilities } from "@/components/landing/landing-capabilities";
 import { LandingPlatform } from "@/components/landing/landing-platform";
 import { LandingFooter } from "@/components/landing/landing-footer";
+import { LandingFaq } from "@/components/landing/landing-faq";
+import { createProductStructuredData } from "@/lib/product-marketing";
 
 /**
  * Public marketing page metadata. Only this signed-out view is intended for
@@ -38,31 +40,12 @@ export const metadata: Metadata = {
  * license, repository, and free-of-charge — no ratings or adoption claims.
  */
 function StructuredData() {
-    const data = {
-        "@context": "https://schema.org",
-        "@type": "SoftwareApplication",
-        name: brand.name,
-        applicationCategory: "BusinessApplication",
-        operatingSystem: "Web (self-hosted)",
-        description: brand.description,
-        author: {
-            "@type": "Person",
-            name: brand.author.name,
-        },
-        license: brand.license.url,
-        codeRepository: brand.repository.url,
-        isAccessibleForFree: true,
-        offers: {
-            "@type": "Offer",
-            price: "0",
-            priceCurrency: "USD",
-        },
-    };
+    const data = createProductStructuredData();
 
     return (
         <script
             type="application/ld+json"
-            dangerouslySetInnerHTML={{ __html: JSON.stringify(data) }}
+            dangerouslySetInnerHTML={{ __html: JSON.stringify(data).replace(/</g, "\\u003c") }}
         />
     );
 }
@@ -89,10 +72,11 @@ export default async function HomePage() {
             <div className="bg-black">
                 <LandingNav />
             </div>
-            <main>
+            <main id="main-content">
                 <LandingHero />
                 <LandingCapabilities />
                 <LandingPlatform />
+                <LandingFaq />
             </main>
             <LandingFooter />
         </div>

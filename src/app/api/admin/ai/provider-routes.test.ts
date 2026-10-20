@@ -114,11 +114,11 @@ describe("GET /api/ai/admin/providers", () => {
         const body = await response.json();
         // DB row first, then the env-configured providers (zai, nuha) so
         // admins can assign roles to them without a stored credential row.
-        expect(body.providers).toHaveLength(3);
+        expect(body.providers).toHaveLength(5);
         expect(body.providers[0].maskedHint).toBe("ope•••••••key");
         expect(body.providers[0]).toMatchObject({ source: "db", mutable: true });
-        expect(body.providers.map((p: { providerKey: string }) => p.providerKey)).toEqual(["openai", "zai", "nuha"]);
-        expect(body.providers.filter((p: { id: string }) => p.id.startsWith("new:"))).toHaveLength(2);
+        expect(body.providers.map((p: { providerKey: string }) => p.providerKey)).toEqual(["openai", "zai", "nuha", "anthropic", "openai-compatible"]);
+        expect(body.providers.filter((p: { id: string }) => p.id.startsWith("new:"))).toHaveLength(4);
         expect(body.providers.filter((p: { source: string }) => p.source === "placeholder")).toEqual(expect.arrayContaining([
             expect.objectContaining({ providerKey: "zai", mutable: true, isEnabled: false }),
             expect.objectContaining({ providerKey: "nuha", mutable: true, isEnabled: false }),
@@ -152,6 +152,9 @@ describe("GET /api/ai/admin/providers", () => {
                     isEnabled: false,
                     mutable: true,
                 }),
+                expect.objectContaining({ providerKey: "openai", source: "placeholder" }),
+                expect.objectContaining({ providerKey: "anthropic", source: "placeholder" }),
+                expect.objectContaining({ providerKey: "openai-compatible", source: "placeholder" }),
             ],
         });
     });

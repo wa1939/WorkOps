@@ -63,7 +63,7 @@ This codebase runs real departments. A past incident — a schema-sync command d
 
 ## AI-related development
 
-- Provider resolution lives in `src/lib/glm.ts` (default GLM target, fallback model, admin-assigned alternatives).
+- Provider resolution uses `src/lib/ai/provider-config.ts` and the backward-compatible `src/lib/glm.ts` entry point. Native Claude uses the official Anthropic SDK; OpenAI and compatible services share the existing bounded transport. Preserve opt-in routing, secret redaction, cancellation, and no cross-vendor fallback by default for generic providers.
 - New assistant capabilities must respect the write gates and permission scoping — see [Architecture → AI subsystem](architecture.md#ai-subsystem) and the existing tests (`src/lib/ai/*.test.ts`) for the expected shape.
 - Anything autonomous (jobs, monitors, connectors) stays behind explicit admin configuration; don't add default-on autonomy.
 

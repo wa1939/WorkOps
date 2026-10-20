@@ -44,6 +44,12 @@ This project uses **Prisma Migrate only**. Several operators run real department
 
 ## Code style
 
+### Protected default branch
+
+Submit changes through a pull request. The default branch requires an up-to-date passing `test` check, an approving review, code-owner review where ownership applies, approval of the latest push, and resolved review conversations. Stale approvals are dismissed on new commits. Force-pushes and branch deletion are blocked separately, without a bypass. Repository administrators retain an explicit PR-only recovery bypass for the review/check rules; it is not the normal contribution route.
+
+GitHub Actions tokens default to read-only and cannot approve PRs. All external fork contributors require maintainer approval before their workflows run. Never introduce `pull_request_target` execution of untrusted PR code or give forked code deployment secrets. Pin third-party actions to immutable commits and review dependency update PRs rather than auto-merging them.
+
 - TypeScript throughout; keep new code typed, and avoid `any` where a real type is reachable.
 - Follow the surrounding file's formatting; ESLint (`npm run lint`) is the arbiter.
 - Prefer server-side authorization checks; the app enforces permissions in API routes, not only in the UI.

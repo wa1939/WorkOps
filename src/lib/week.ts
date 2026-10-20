@@ -1,5 +1,13 @@
 export const RIYADH_TZ_OFFSET_MS = 3 * 60 * 60 * 1000; // Asia/Riyadh = UTC+3, no DST
 
+/** The Riyadh calendar day containing an instant, independent of browser timezone. */
+export function riyadhDayWindow(now: Date): { start: Date; end: Date } {
+    const riyadhNow = new Date(now.getTime() + RIYADH_TZ_OFFSET_MS);
+    riyadhNow.setUTCHours(0, 0, 0, 0);
+    const start = new Date(riyadhNow.getTime() - RIYADH_TZ_OFFSET_MS);
+    return { start, end: new Date(start.getTime() + 24 * 60 * 60 * 1000) };
+}
+
 /**
  * Given "now", returns the just-completed Saudi work week window
  * [weekStart, weekEnd) in UTC, where weekEnd is the most recent Sunday 00:00

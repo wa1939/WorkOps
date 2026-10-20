@@ -35,7 +35,9 @@ function cursorValue(raw: string | null): unknown {
 export function parseTaskGridSearchParams(params: URLSearchParams): TaskGridInput {
     return taskGridInputSchema.parse({
         filters: {
+            scope: optionalValue(params, "scope"),
             status: values(params, "status"),
+            statusNotIn: values(params, "statusNotIn"),
             priority: values(params, "priority"),
             assigneeIds: values(params, "assigneeIds", "assigneeId"),
             tagIds: values(params, "tagIds", "tagId"),

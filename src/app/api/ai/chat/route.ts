@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { assignmentHasCredential, configuredAiTarget, hasConfiguredAi } from "@/lib/ai/provider-config";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -288,7 +289,25 @@ export async function POST(request: Request) {
         runtimeCredentials = {};
         await writeDiagnostic({ category: "CHAT_REQUEST_FAILURE", level: "WARN", message: "Runtime provider credential lookup failed; continuing with environment configuration", metadata: { stage: "runtime_credentials" } });
     }
-    if (!process.env.GLM_API_KEY && !process.env.NUHA_API_KEY && !runtimeCredentials.zai && !runtimeCredentials.nuha) {
+
+    // Resolve the saved CHAT assignment before the availability preflight: an
+    // assignment may select a provider whose stored or environment credential
+    // exists even when the deployment default (legacy GLM/Nuha keys) is
+    // unconfigured. Invalid persisted assignments stay deferred to the stream,
+    // where they fail visibly as before; transient lookup failures continue on
+    // the safe default and remain observable in diagnostics.
+    let chatAssignment: Awaited<ReturnType<typeof resolveModelForRole>> | null = null;
+    let chatAssignmentError: Error | null = null;
+    try {
+        chatAssignment = await resolveModelForRole("CHAT", prisma, { defaultTarget: configuredAiTarget() ?? DEFAULT_OPERATIONAL_MODEL });
+    } catch (error) {
+        if (error instanceof Error && error.name === "InvalidModelAssignmentConfigError") {
+            chatAssignmentError = error;
+        } else {
+            await writeDiagnostic({ category: "CHAT_MODEL_ASSIGNMENT_FALLBACK", level: "WARN", message: "CHAT model assignment lookup failed; using safe default", metadata: { stage: "model_assignment_lookup" } });
+        }
+    }
+    if (!hasConfiguredAi(runtimeCredentials) && !assignmentHasCredential(chatAssignment, runtimeCredentials)) {
         return failureResponse(503, { error: "AI is not configured" }, "AI chat request rejected: AI is not configured");
     }
 
@@ -462,24 +481,17 @@ export async function POST(request: Request) {
                     : "";
 
 
-                // Honor the admin-assigned CHAT model; Nuha assignments switch
-                // the primary provider. Explicit fallback configuration is
-                // validated by the roles service and passed through unchanged.
-                let assignment: Awaited<ReturnType<typeof resolveModelForRole>> | null;
-                try {
-                    assignment = await resolveModelForRole("CHAT", prisma, { defaultTarget: DEFAULT_OPERATIONAL_MODEL });
-                } catch (error) {
-                    // Invalid persisted assignments must fail visibly. A
-                    // transient DB lookup failure may continue on the safe
-                    // default, but it is still observable in diagnostics.
-                    if (error instanceof Error && error.name === "InvalidModelAssignmentConfigError") {
-                        await writeDiagnostic({ category: "CHAT_REQUEST_FAILURE", level: "ERROR", message: "Configured CHAT model assignment is invalid", metadata: { stage: "model_assignment" } });
-                        throw error;
-                    }
-                    await writeDiagnostic({ category: "CHAT_MODEL_ASSIGNMENT_FALLBACK", level: "WARN", message: "CHAT model assignment lookup failed; using safe default", metadata: { stage: "model_assignment_lookup" } });
-                    assignment = null;
+                // The CHAT assignment was resolved before the availability
+                // preflight; reuse it so the executed target cannot drift from
+                // the request gate. Invalid persisted assignments must fail
+                // visibly, and a transient lookup failure already continued on
+                // the safe default with a diagnostic.
+                if (chatAssignmentError !== null) {
+                    await writeDiagnostic({ category: "CHAT_REQUEST_FAILURE", level: "ERROR", message: "Configured CHAT model assignment is invalid", metadata: { stage: "model_assignment" } });
+                    throw chatAssignmentError;
                 }
-                let configuredFallbacks: ReadonlyArray<{ providerKey: "zai" | "nuha"; modelName: string }> | undefined;
+                const assignment: Awaited<ReturnType<typeof resolveModelForRole>> | null = chatAssignment;
+                let configuredFallbacks: ReadonlyArray<{ providerKey: AiProvider; modelName: string }> | undefined;
                 if (assignment) {
                     try {
                         configuredFallbacks = getConfiguredFallbacks("CHAT", JSON.stringify(assignment.config));

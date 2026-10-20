@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { AI_PROVIDERS } from "@/lib/ai/provider-config";
 import { auth } from "@/lib/auth";
 import { toSabahActor, SabahForbiddenError } from "@/lib/sabah/auth/actor";
 import { assignModelRole, listModelAssignments, unassignModelRole, UnsupportedChatProviderError, UnsupportedModelAssignmentError } from "@/lib/sabah/providers/admin-service";
@@ -8,7 +9,7 @@ import { InvalidModelAssignmentConfigError, MAX_MODEL_FALLBACKS } from "@/lib/sa
 export const dynamic = "force-dynamic";
 
 const fallbackTargetSchema = z.object({
-    providerKey: z.enum(["zai", "nuha"]),
+    providerKey: z.enum(AI_PROVIDERS),
     modelName: z.string().min(1).max(128),
 }).strict();
 

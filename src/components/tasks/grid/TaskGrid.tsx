@@ -33,6 +33,7 @@ import type {
     TaskGridGroup,
     TaskGridRow,
     TaskGridUser,
+    TaskGridFilters,
 } from "./grid-types";
 import { TaskDrawer } from "../drawer/TaskDrawer";
 import { TaskDrawerListProvider } from "../drawer/useTaskDrawer";
@@ -40,9 +41,10 @@ import type { SelectionModifiers } from "./selection";
 import { useTaskGrid } from "./useTaskGrid";
 import { clampColumnWidth } from "./column-resize";
 import { BulkBar } from "./BulkBar";
+import { taskGridWindow } from "./grid-window";
 
 
-const MAX_RENDERED_ROWS = 200;
+
 const GRID_PREFERENCES_VERSION = 1 as const;
 const GRID_PREFERENCES_KEY = "departmenthub:tasks-grid-preferences-v1";
 
@@ -237,7 +239,7 @@ function deriveGroup(key: string, rows: TaskGridRow[], groupBy: GridGroupBy): Re
     };
 }
 
-export function TaskGrid() {
+export function TaskGrid({ filters }: { filters?: TaskGridFilters } = {}) {
     // Session context is not mounted app-wide (no SessionProvider); grid
     // preferences stay per-browser instead of per-user to avoid a crash here.
     const storageKey = GRID_PREFERENCES_KEY;
@@ -260,9 +262,13 @@ export function TaskGrid() {
         selectRow,
         selectGroup,
         clearSelection,
-    } = useTaskGrid();
+    } = useTaskGrid({ filters });
     const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
-    const visibleRows = useMemo(() => rows.slice(0, MAX_RENDERED_ROWS), [rows]);
+    const [windowPage, setWindowPage] = useState(0);
+    const filtersKey = JSON.stringify(filters ?? {});
+    useEffect(() => setWindowPage(0), [filtersKey]);
+    const rowWindow = useMemo(() => taskGridWindow(rows, windowPage), [rows, windowPage]);
+    const visibleRows = rowWindow.rows;
     const rowIds = useMemo(() => visibleRows.map((row) => row.id), [visibleRows]);
     const rowIdsKey = rowIds.join("|");
     const [focusedRowId, setFocusedRowId] = useState<string | null>(rowIds[0] ?? null);
@@ -372,7 +378,7 @@ export function TaskGrid() {
             <section className="space-y-4 pb-20" aria-label="Task grid">
             <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                 <div className="min-w-0 basis-full sm:mr-auto sm:basis-auto">
-                    <h1 className="truncate text-xl font-semibold tracking-tight">Tasks</h1>
+                    {filters ? <h2 className="sr-only">Task results</h2> : <h1 className="truncate text-xl font-semibold tracking-tight">Tasks</h1>}
                     <p className="text-sm text-muted-foreground">{rows.length}{hasMore ? "+" : ""} tasks loaded</p>
                 </div>
 
@@ -440,6 +446,15 @@ export function TaskGrid() {
                 )}
             </div>
 
+            {rowWindow.pages > 1 && (
+                <nav aria-label="Loaded task pages" className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                    <span className="text-muted-foreground">Showing {rowWindow.start + 1}–{rowWindow.start + visibleRows.length} of {rows.length} loaded tasks</span>
+                    <div className="flex items-center gap-2">
+                        <button type="button" className="min-h-11 rounded-md border px-3 disabled:opacity-50" disabled={rowWindow.page === 0} onClick={() => setWindowPage(rowWindow.page - 1)}>Previous tasks</button>
+                        <button type="button" className="min-h-11 rounded-md border px-3 disabled:opacity-50" disabled={rowWindow.page >= rowWindow.pages - 1} onClick={() => setWindowPage(rowWindow.page + 1)}>Next tasks</button>
+                    </div>
+                </nav>
+            )}
             {error && (
                 <div role="alert" className="flex items-center justify-between gap-3 rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
                     <span>{error}</span>
@@ -540,9 +555,7 @@ export function TaskGrid() {
                 </>
             )}
 
-            <p className={cn("text-xs text-muted-foreground", rows.length < MAX_RENDERED_ROWS && "sr-only")}>
-                Virtualization is intentionally deferred; this shell renders at most {MAX_RENDERED_ROWS} rows.
-            </p>
+
             <BulkBar
                 selectedIds={selectedIds}
                 onRefresh={refresh}

@@ -1,4 +1,6 @@
 import type { GLMModel } from "@/lib/glm";
+import { isSupportedModelTarget } from "./roles";
+import type { AiProviderId } from "@/lib/ai/provider-config";
 
 export const ZAI_COMPRESSION_MODELS: readonly GLMModel[] = [
     "glm-5",
@@ -8,7 +10,8 @@ export const ZAI_COMPRESSION_MODELS: readonly GLMModel[] = [
     "GLM-4.5-Flash",
 ];
 
-export function isCompressionTargetSupported(providerKey: unknown, modelName: unknown): providerKey is "zai" | "nuha" {
+export function isCompressionTargetSupported(providerKey: unknown, modelName: unknown): providerKey is AiProviderId {
+    if (providerKey === "openai" || providerKey === "anthropic" || providerKey === "openai-compatible") return isSupportedModelTarget("COMPRESSION", providerKey, modelName);
     if (typeof providerKey !== "string" || typeof modelName !== "string" || !modelName.trim()) return false;
     if (providerKey === "nuha") return true;
     return providerKey === "zai" && ZAI_COMPRESSION_MODELS.includes(modelName as GLMModel);

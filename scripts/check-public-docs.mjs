@@ -5,13 +5,24 @@ import { unified } from 'unified';
 import remarkParse from 'remark-parse';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const documents = [
+const requiredDocuments = [
   'README.md', 'CONTRIBUTING.md', 'SECURITY.md', 'SUPPORT.md', 'CODE_OF_CONDUCT.md',
   'ROADMAP.md', 'BRAND.md', 'THIRD_PARTY_NOTICES.md', 'PUBLICATION.md', 'docs/README.md', 'docs/demo-data.md',
   'docs/getting-started.md', 'docs/user-guide.md', 'docs/development.md',
   'docs/architecture.md', 'docs/configuration.md', 'docs/capabilities.md', 'docs/faq.md',
   'docs/deployment/vercel.md', 'docs/deployment/self-hosting.md', 'docs/deployment/database.md',
 ];
+async function markdownFiles(directory) {
+  const entries = await readdir(directory, { withFileTypes: true });
+  const files = [];
+  for (const entry of entries) {
+    const absolute = path.join(directory, entry.name);
+    if (entry.isDirectory()) files.push(...await markdownFiles(absolute));
+    else if (entry.isFile() && entry.name.endsWith('.md')) files.push(path.relative(root, absolute));
+  }
+  return files;
+}
+const documents = [...new Set([...requiredDocuments, ...await markdownFiles(path.join(root, 'docs'))])];
 const forbidden = [
   /cee\.people-lab\.ai/i,
   /cee\.neuravisor\.com/i,

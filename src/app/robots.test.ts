@@ -1,5 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import robots from "./robots";
+
+beforeEach(() => {
+    for (const name of ["APP_BASE_URL", "NEXTAUTH_URL", "VERCEL_PROJECT_PRODUCTION_URL", "VERCEL_URL"]) vi.stubEnv(name, "");
+});
+afterEach(() => vi.unstubAllEnvs());
 
 describe("robots", () => {
     it("allows crawling while disallowing auth, API, and app prefixes", () => {

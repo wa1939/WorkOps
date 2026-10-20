@@ -1,4 +1,8 @@
 import { z } from "zod";
+import { assignmentHasCredential, configuredAiTarget, hasConfiguredAi } from "@/lib/ai/provider-config";
+import { buildOperationalAiTarget } from "@/lib/ai/provider-resolution";
+import { resolveModelForRole, type ModelAssignment } from "@/lib/sabah/providers/roles";
+import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { toSabahActor, SabahForbiddenError } from "@/lib/sabah/auth/actor";
@@ -79,7 +83,25 @@ export async function POST(request: Request) {
     } catch {
         // Stored credentials are optional; environment credentials may still work.
     }
-    if (!process.env.GLM_API_KEY && !process.env.NUHA_API_KEY && !runtimeCredentials.zai && !runtimeCredentials.nuha) {
+
+    // Resolve the saved CHAT assignment before the availability preflight: the
+    // assignment may select a provider whose stored or environment credential
+    // exists even when the deployment default is unconfigured.
+    const defaultTarget = configuredAiTarget() ?? { providerKey: "zai" as const, modelName: "glm-4.5-flash" };
+    let assignment: ModelAssignment;
+    let assignmentPreflightError: Error | null = null;
+    try {
+        assignment = await resolveModelForRole("CHAT", prisma, { defaultTarget });
+    } catch (error) {
+        if (error instanceof Error && error.name === "InvalidModelAssignmentConfigError") {
+            // Surfaced by the generation step below, preserving today's
+            // sanitized 502 failure for invalid persisted assignments.
+            assignmentPreflightError = error;
+        }
+        // Preserve environment-backed operation when the optional assignment lookup is unavailable.
+        assignment = { ...defaultTarget, config: {} };
+    }
+    if (!hasConfiguredAi(runtimeCredentials) && !assignmentHasCredential(assignment, runtimeCredentials)) {
         return NextResponse.json({ error: "AI is not configured" }, { status: 503 });
     }
 
@@ -111,9 +133,12 @@ export async function POST(request: Request) {
     ];
 
     try {
+        // The assignment was resolved before the availability preflight; an
+        // invalid persisted assignment surfaces here as today's sanitized 502.
+        if (assignmentPreflightError) throw assignmentPreflightError;
+        const target = buildOperationalAiTarget(assignment, runtimeCredentials);
         const response = await callGLM({
-            model: "glm-4.5-flash",
-            credentials: runtimeCredentials,
+            ...target,
             messages,
             temperature: 0.4,
             max_tokens: MAX_PROPOSAL_TOKENS,

@@ -4,85 +4,8 @@
  * hairline dividers instead of card grids.
  */
 
-const groups = [
-    {
-        heading: "Day-to-day work",
-        framing: "The tasks, timelines, and plans a department actually executes.",
-        items: [
-            {
-                name: "Tasks & board",
-                description:
-                    "A kanban board with todo, doing, blocked, waiting, and done states — plus priorities, due dates, dependencies, comments, and time logging.",
-            },
-            {
-                name: "Projects & timelines",
-                description:
-                    "Per-project workspaces with Gantt timelines, their own task boards, and progress reporting.",
-            },
-            {
-                name: "Planning",
-                description:
-                    "Weekly planning views and a quarter-focus view that keeps the current priority in front of the team.",
-            },
-        ],
-    },
-    {
-        heading: "Shared visibility",
-        framing: "What the department knows together, not what one person remembers.",
-        items: [
-            {
-                name: "Department KPIs",
-                description:
-                    "Shared team-level KPIs with quarterly scoring and trend charts — scorecards the whole department owns, not individual ratings.",
-            },
-            {
-                name: "Notes",
-                description:
-                    "A shared notebook for decisions, meeting notes, and reference material.",
-            },
-            {
-                name: "Reports",
-                description:
-                    "Generated status reports, with optional AI-drafted summaries you enable with your own model key.",
-            },
-            {
-                name: "Saved views",
-                description:
-                    "Personal home views and saved filters, so each person opens the page they actually need.",
-            },
-        ],
-    },
-    {
-        heading: "Keeping people in sync",
-        framing: "The quiet machinery that stops work from falling through the cracks.",
-        items: [
-            {
-                name: "Announcements",
-                description:
-                    "Department-wide posts and scheduled communication digests.",
-            },
-            {
-                name: "Team directory",
-                description: "People, roles, and departments at a glance.",
-            },
-            {
-                name: "Reminders",
-                description:
-                    "Overdue-task reminders, a notification inbox, and snooze control.",
-            },
-            {
-                name: "Help & support",
-                description:
-                    "Request help, offer help, and claim support requests with clear owners.",
-            },
-            {
-                name: "Search & commands",
-                description:
-                    "Global search, a command palette, and keyboard shortcuts for power users.",
-            },
-        ],
-    },
-] as const;
+import { productCapabilities } from "@/lib/product-marketing";
+import { brand } from "@/lib/brand";
 
 export function LandingCapabilities() {
     return (
@@ -99,7 +22,7 @@ export function LandingCapabilities() {
                 </div>
 
                 <div className="mt-14 space-y-16">
-                    {groups.map((group) => (
+                    {productCapabilities.map((group) => (
                         <div key={group.heading}>
                             <h3 className="text-lg font-semibold tracking-tight text-[hsl(210_20%_98%)]">
                                 {group.heading}
@@ -125,6 +48,9 @@ export function LandingCapabilities() {
                         </div>
                     ))}
                 </div>
+                <a href={`${brand.repository.url}/blob/main/docs/capabilities.md`} className="mt-10 inline-flex min-h-11 items-center text-sm text-violet-300 underline underline-offset-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400">
+                    Explore the complete feature guide
+                </a>
             </div>
         </section>
     );

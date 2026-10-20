@@ -33,6 +33,7 @@ export const taskGridCursorSchema = z.object({
 }).strict();
 
 export const taskGridFiltersSchema = z.object({
+    scope: z.enum(["all", "assigned", "related", "created", "unassigned"]).optional(),
     status: z.array(taskGridStatusSchema).default([]),
     statusNotIn: z.array(taskGridStatusSchema).max(6).optional(),
     priority: z.array(taskGridPrioritySchema).default([]),
@@ -160,6 +161,8 @@ export function buildTaskGridQuery(
     where: Prisma.TaskWhereInput;
     orderBy: Prisma.TaskOrderByWithRelationInput[];
     include: Prisma.TaskInclude;
+    cursor?: Prisma.TaskWhereUniqueInput;
+    skip?: number;
 } {
     const input = taskGridInputSchema.parse(rawInput);
     const { filters } = input;
@@ -205,6 +208,15 @@ export function buildTaskGridQuery(
     if (filters.assigneeIds.length > 0) {
         conditions.push({ assignments: { some: { userId: { in: filters.assigneeIds } } } });
     }
+    if (filters.scope === "assigned") {
+        conditions.push({ assignments: { some: { userId: actor.id } } });
+    } else if (filters.scope === "related") {
+        conditions.push({ OR: [{ assignments: { some: { userId: actor.id } } }, { createdById: actor.id }] });
+    } else if (filters.scope === "created") {
+        conditions.push({ createdById: actor.id });
+    } else if (filters.scope === "unassigned") {
+        conditions.push({ assignments: { none: {} } });
+    }
     if (filters.tagIds.length > 0) {
         conditions.push({ tags: { some: { tagId: { in: filters.tagIds } } } });
     }
@@ -234,12 +246,13 @@ export function buildTaskGridQuery(
     if (!filters.includeArchived) {
         conditions.push({ archived: false });
     }
-    if (input.cursor) {
+    if (input.cursor && input.sortBy === "updatedAt") {
         conditions.push(cursorWhere(input.cursor, input.dir));
     }
 
     return {
         where: composeScopes(...conditions) as Prisma.TaskWhereInput,
+        ...(input.cursor && input.sortBy !== "updatedAt" ? { cursor: { id: input.cursor.id }, skip: 1 } : {}),
         orderBy: [
             { [SORT_FIELD[input.sortBy]]: input.dir },
             { id: input.dir },

@@ -107,6 +107,14 @@ vi.mock("@/lib/prisma", () => ({
 }));
 vi.mock("@/lib/glm", () => ({ DEFAULT_GLM_MODEL: "glm-5.3-flash", callGLMText: (...args: any[]) => callGLMText(...args) }));
 
+const resolveOperationalAiTarget = vi.fn(async () => ({
+  provider: "zai" as const,
+  model: "glm-5.3-flash" as const,
+  fallbacks: [{ providerKey: "zai" as const, modelName: "glm-4.5-flash" }, { providerKey: "nuha" as const, modelName: "Nuha-2.1" }],
+  credentials: {} as Record<string, string>,
+}));
+vi.mock("@/lib/ai/provider-resolution", () => ({ resolveOperationalAiTarget: () => resolveOperationalAiTarget() }));
+
 import {
   approveReportStyleMemo,
   bootstrapReportHistory,
@@ -155,6 +163,14 @@ describe("report history import contract", () => {
     await bootstrapReportHistory({ approved: true, entries: [{ date: "2026-08-16", content: "Synthetic style history." }] }, actor.id);
 
     expect(callGLMText.mock.calls[0][1]).toMatchObject({ model: "glm-5.3-flash", thinking: "disabled" });
+  });
+
+  it("routes history style extraction through the resolved operational target for stored-credential deployments", async () => {
+    resolveOperationalAiTarget.mockResolvedValueOnce({ provider: "openai", model: "gpt-4o-mini", fallbacks: [], credentials: { openai: "stored-key" } } as never);
+
+    await bootstrapReportHistory({ approved: true, entries: [{ date: "2026-08-16", content: "Synthetic routed history." }] }, actor.id);
+
+    expect(callGLMText.mock.calls[0][1]).toMatchObject({ provider: "openai", model: "gpt-4o-mini", fallbacks: [], credentials: { openai: "stored-key" }, thinking: "disabled" });
   });
 
   it("requires explicit approval, validates real dates, and preserves exact text", () => {

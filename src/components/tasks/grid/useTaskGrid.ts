@@ -39,7 +39,7 @@ function setListParam(params: URLSearchParams, key: string, values: string[]): v
     values.forEach((value) => params.append(key, value));
 }
 
-function buildBaseParams(
+export function buildBaseParams(
     rawSearchParams: string,
     groupBy: GridGroupBy,
     filters?: TaskGridFilters,
@@ -51,11 +51,16 @@ function buildBaseParams(
 
     if (!filters) return params;
     if (filters.status) setListParam(params, "status", filters.status);
+    if (filters.statusNotIn) setListParam(params, "statusNotIn", filters.statusNotIn);
     if (filters.priority) setListParam(params, "priority", filters.priority);
-    if (filters.assigneeIds) setListParam(params, "assigneeIds", filters.assigneeIds);
+    if (filters.assigneeIds) {
+        params.delete("assigneeId");
+        setListParam(params, "assigneeIds", filters.assigneeIds);
+    }
     if (filters.tagIds) setListParam(params, "tagIds", filters.tagIds);
 
     const scalarFilters: Array<[keyof TaskGridFilters, string]> = [
+        ["scope", "scope"],
         ["projectId", "projectId"],
         ["workspaceId", "workspaceId"],
         ["search", "search"],
@@ -127,6 +132,7 @@ export function useTaskGrid(options: UseTaskGridOptions = {}) {
     const selectionAnchorRef = useRef<string | null>(null);
     const [reloadToken, setReloadToken] = useState(0);
     const rowsRef = useRef<TaskGridRow[]>([]);
+    const requestGenerationRef = useRef(0);
 
     const commitRows = useCallback((updater: (current: TaskGridRow[]) => TaskGridRow[]) => {
         setRows((current) => {
@@ -182,6 +188,7 @@ export function useTaskGrid(options: UseTaskGridOptions = {}) {
 
     useEffect(() => {
         const controller = new AbortController();
+        requestGenerationRef.current += 1;
         let active = true;
         setLoading(true);
         setLoadingMore(false);
@@ -215,19 +222,21 @@ export function useTaskGrid(options: UseTaskGridOptions = {}) {
 
     const loadMore = useCallback(async () => {
         if (!nextCursor || loading || loadingMore) return;
+        const generation = requestGenerationRef.current;
         setLoadingMore(true);
         setError(null);
         try {
             const data = await fetchPage(nextCursor);
+            if (generation !== requestGenerationRef.current) return;
             commitRows((current) => mergeRows(current, data.rows));
             setGroups((current) => mergeGroups(current, data.groups));
             setNextCursor(data.nextCursor);
         } catch (requestError: unknown) {
-            if ((requestError as { name?: string }).name !== "AbortError") {
+            if (generation === requestGenerationRef.current && (requestError as { name?: string }).name !== "AbortError") {
                 setError(errorMessage(requestError));
             }
         } finally {
-            setLoadingMore(false);
+            if (generation === requestGenerationRef.current) setLoadingMore(false);
         }
     }, [commitRows, fetchPage, loading, loadingMore, nextCursor]);
 

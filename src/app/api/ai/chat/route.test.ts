@@ -26,7 +26,7 @@ vi.mock("@/lib/ai/system-prompt", () => ({
 }));
 vi.mock("@/lib/ai/audit", () => ({ logAiAction: vi.fn(async () => undefined) }));
 vi.mock("@/lib/sabah/continuity/compression", () => ({ compressConversation: vi.fn(async () => undefined) }));
-vi.mock("@/lib/sabah/providers/roles", () => ({ resolveModelForRole: vi.fn(), getConfiguredFallbacks: vi.fn() }));
+vi.mock("@/lib/sabah/providers/roles", async (importOriginal) => ({ ...await importOriginal<typeof import("@/lib/sabah/providers/roles")>(), resolveModelForRole: vi.fn(), getConfiguredFallbacks: vi.fn() }));
 vi.mock("@/lib/sabah/providers/admin-service", () => ({ resolveRuntimeProviderCredentials: vi.fn() }));
 vi.mock("@/lib/sabah/auth/actor", () => {
     class SabahForbiddenError extends Error {
@@ -164,6 +164,50 @@ describe("POST /api/ai/chat", () => {
         expect(glmMock).toHaveBeenCalledWith(expect.objectContaining({ credentials: { zai: "stored-zai-key" } }));
     });
 
+    it("serves a saved CHAT assignment whose provider credential exists while the deployment default is unconfigured", async () => {
+        vi.stubEnv("GLM_API_KEY", "");
+        vi.stubEnv("NUHA_API_KEY", "");
+        vi.stubEnv("AI_PROVIDER", "");
+        vi.stubEnv("AI_MODEL", "");
+        vi.stubEnv("ANTHROPIC_API_KEY", "synthetic-env-claude-key");
+        vi.mocked(resolveRuntimeProviderCredentials).mockResolvedValue({});
+        vi.mocked(resolveModelForRole).mockResolvedValue({ providerKey: "anthropic", modelName: "operator-selected-claude", config: {} });
+        stubGlmTurns([{ type: "content_delta", delta: "ok" }, finishChunk("")]);
+
+        const response = await POST(chatRequest({ message: "hi" }));
+        await readEvents(response);
+
+        expect(response.status).toBe(200);
+        expect(glmMock).toHaveBeenCalledWith(expect.objectContaining({
+            provider: "anthropic",
+            model: "operator-selected-claude",
+            credentials: {},
+        }));
+    });
+
+    it("serves a saved CHAT assignment when only a configured fallback target has an environment credential", async () => {
+        vi.stubEnv("GLM_API_KEY", "");
+        vi.stubEnv("NUHA_API_KEY", "");
+        vi.stubEnv("AI_PROVIDER", "");
+        vi.stubEnv("AI_MODEL", "");
+        vi.stubEnv("ANTHROPIC_API_KEY", "synthetic-env-claude-key");
+        vi.mocked(resolveRuntimeProviderCredentials).mockResolvedValue({});
+        vi.mocked(resolveModelForRole).mockResolvedValue({
+            providerKey: "zai",
+            modelName: "glm-4.5-flash",
+            config: { fallbacks: [{ providerKey: "anthropic", modelName: "operator-selected-claude" }] },
+        });
+        stubGlmTurns([{ type: "content_delta", delta: "ok" }, finishChunk("")]);
+
+        const response = await POST(chatRequest({ message: "hi" }));
+        await readEvents(response);
+
+        expect(response.status).toBe(200);
+        expect(glmMock).toHaveBeenCalledWith(expect.objectContaining({
+            fallbacks: [{ providerKey: "anthropic", modelName: "operator-selected-claude" }],
+        }));
+    });
+
     it("falls back to environment credentials when stored credential lookup is unavailable", async () => {
         vi.mocked(resolveRuntimeProviderCredentials).mockRejectedValue(new Error("credential table unavailable"));
         stubGlmTurns([{ type: "content_delta", delta: "ok" }, finishChunk("")]);
@@ -176,7 +220,7 @@ describe("POST /api/ai/chat", () => {
     });
 
     it("refuses a pre-existing unsupported CHAT assignment without silently routing to Z.AI", async () => {
-        vi.mocked(resolveModelForRole).mockResolvedValue({ providerKey: "openai", modelName: "gpt-4o-mini", config: {} });
+        vi.mocked(resolveModelForRole).mockResolvedValue({ providerKey: "unimplemented-provider", modelName: "model", config: {} });
         const response = await POST(chatRequest({ message: "hi" }));
         const events = await readEvents(response);
         expect(glmMock).not.toHaveBeenCalled();

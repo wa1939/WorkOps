@@ -39,13 +39,13 @@ export function LandingHero() {
             <div className="mx-auto grid max-w-7xl gap-12 px-4 pb-20 pt-14 sm:px-6 md:pb-28 md:pt-20 lg:grid-cols-[0.9fr_1.1fr] lg:items-center lg:gap-12">
                 <div>
                     <h1 className={`${displayFont.className} workops-rise text-4xl font-semibold leading-[1.06] tracking-[-0.03em] text-[hsl(210_20%_98%)] [text-wrap:balance] sm:text-5xl lg:text-6xl`}>
-                        Make work visible. Keep the team in sync.
+                        Task management that sees the whole workload.
                     </h1>
                     <p className="workops-rise workops-rise-1 mt-6 max-w-xl text-lg leading-relaxed text-[hsl(218_11%_65%)]">
-                        WorkOps pulls tasks, project timelines, shared KPIs, notes, and
-                        announcements into a single self-hosted hub — so the whole team
-                        reads from the same page, every week. Open source under the MIT
-                        license, running on your own infrastructure.
+                        Bring personal tasks, project delivery, team capacity and shared
+                        goals into one place. Plan the work, see who has room for it,
+                        and follow through with time tracking, reports and optional AI.
+                        Open source under MIT, on infrastructure you control.
                     </p>
                     <div className="workops-rise workops-rise-2 mt-8 flex flex-wrap items-center gap-3">
                         <a
@@ -58,10 +58,10 @@ export function LandingHero() {
                             View the source on GitHub
                         </a>
                         <Link
-                            href="/login"
+                            href={`${brand.repository.url}/blob/main/docs/getting-started.md`}
                             className="inline-flex items-center rounded-lg border border-[hsl(215_28%_24%)] px-5 py-3 text-sm font-medium text-[hsl(213_31%_91%)] transition-colors hover:border-[hsl(215_28%_35%)] hover:bg-[hsl(215_28%_10%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(263.4_70%_70%)]"
                         >
-                            Team sign in
+                            Get started
                         </Link>
                     </div>
                     <p className="workops-rise workops-rise-3 mt-8 text-[13px] text-[hsl(218_11%_55%)]">

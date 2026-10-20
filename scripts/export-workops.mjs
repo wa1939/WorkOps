@@ -24,6 +24,7 @@ const publicDocs = new Set([
   'configuration.md', 'capabilities.md', 'faq.md', 'demo-data.md',
   'deployment/vercel.md', 'deployment/self-hosting.md', 'deployment/database.md',
   'security/workspace-ownership.csv.md',
+  'ai-providers.md', 'features/workload-capacity.md', 'marketing-and-discovery.md',
 ]);
 const privateScripts = new Set([
   'scripts/apply-prod-migration.js', 'scripts/neon-sql.js', 'scripts/safe-migrate.sh',
@@ -36,7 +37,7 @@ function eligible(name) {
   if (name.startsWith('scripts/')) return !privateScripts.has(name);
   if (name.startsWith('docs/images/')) return true;
   if (name.startsWith('docs/')) return publicDocs.has(name.slice(5));
-  if (name.startsWith('.github/ISSUE_TEMPLATE/') || name === '.github/PULL_REQUEST_TEMPLATE.md' || name === '.github/workflows/ci.yml') return true;
+  if (name.startsWith('.github/ISSUE_TEMPLATE/') || ['.github/PULL_REQUEST_TEMPLATE.md', '.github/CODEOWNERS', '.github/dependabot.yml', '.github/workflows/ci.yml', '.github/workflows/sabah-jobs.yml', '.github/workflows/sabah-monitors.yml'].includes(name)) return true;
   return rootFiles.has(name);
 }
 

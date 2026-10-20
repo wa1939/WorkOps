@@ -1,6 +1,7 @@
 import crypto from "crypto";
 import { prisma } from "@/lib/prisma";
-import { callGLMText, DEFAULT_GLM_MODEL } from "@/lib/glm";
+import { callGLMText } from "@/lib/glm";
+import { resolveOperationalAiTarget } from "@/lib/ai/provider-resolution";
 import { logReportFinalizationApproval } from "@/lib/ai/audit";
 import { buildLessonsPrompt, STYLE_MEMO_KEY } from "@/lib/report-lessons";
 import { getReportPromptExtrasForActor, getReportStyleMemoForActor, isReportMemoryEnabled, persistReportStyleMemo } from "@/lib/reports/history";
@@ -78,7 +79,8 @@ async function learnFromFinalEdit(report: any, finalBody: string, actor: ReportA
   if (!aiDraft.trim()) { await logReportFinalizationApproval({ ...auditBase, learned: false }); return { learned: false, memoryId: null, disabled: false }; }
   try {
     const currentMemo = await getReportStyleMemo(actor.id);
-    const raw = await callGLMText(buildLessonsPrompt({ currentMemo, aiSummary: aiDraft, finalBody }), { model: DEFAULT_GLM_MODEL, temperature: 0.2, max_tokens: 800, thinking: "disabled" });
+    const target = await resolveOperationalAiTarget();
+    const raw = await callGLMText(buildLessonsPrompt({ currentMemo, aiSummary: aiDraft, finalBody }), { provider: target.provider, model: target.model, fallbacks: target.fallbacks, credentials: target.credentials, temperature: 0.2, max_tokens: 800, thinking: "disabled" });
     const sourceUpdatedAt = report.submittedAt instanceof Date ? report.submittedAt.toISOString() : new Date().toISOString();
     const persisted = await persistReportStyleMemo({
       ownerId: actor.id,
@@ -165,7 +167,8 @@ function reportPrompt(sources: Awaited<ReturnType<typeof visibleSourceRecords>>,
 export async function generateDraftForPeriod(input: { weekStart: Date; weekEnd: Date; instruction?: string }, actor: ReportActor): Promise<ReportDraft> {
   assertActor(actor); const sources = await visibleSourceRecords(actor, input.weekStart, input.weekEnd);
   const learning = await getReportPromptExtrasForActor(actor.id).catch(() => ({ styleMemo: null, styleExamples: [] as const }));
-  const body = await callGLMText(reportPrompt(sources, input.instruction, learning), { model: DEFAULT_GLM_MODEL, temperature: 0.4, max_tokens: 2500, thinking: "disabled" });
+  const target = await resolveOperationalAiTarget();
+  const body = await callGLMText(reportPrompt(sources, input.instruction, learning), { provider: target.provider, model: target.model, fallbacks: target.fallbacks, credentials: target.credentials, temperature: 0.4, max_tokens: 2500, thinking: "disabled" });
   if (!body.trim()) throw new Error("Provider returned an empty report draft");
   return { body: body.trim(), sourceIds: sources.sourceIds, citations: sources.citations, draft: true, final: false };
 }
@@ -177,7 +180,8 @@ export async function enhanceReport(input: { reportId: string; instruction?: str
   if (report.submittedAt || report.finalBody) throw badRequest("Final report is immutable");
   const sources = await visibleSourceRecords(actor, report.weekStart, report.weekEnd);
   const learning = await getReportPromptExtrasForActor(actor.id).catch(() => ({ styleMemo: null, styleExamples: [] as const }));
-  const body = await callGLMText(`${reportPrompt(sources, input.instruction, learning)}\nExisting draft:\n${report.body}`, { model: DEFAULT_GLM_MODEL, temperature: 0.4, max_tokens: 2500, thinking: "disabled" });
+  const target = await resolveOperationalAiTarget();
+  const body = await callGLMText(`${reportPrompt(sources, input.instruction, learning)}\nExisting draft:\n${report.body}`, { provider: target.provider, model: target.model, fallbacks: target.fallbacks, credentials: target.credentials, temperature: 0.4, max_tokens: 2500, thinking: "disabled" });
   if (!body.trim()) throw new Error("Provider returned an empty report draft");
   const enhancedBody = body.trim();
   const saved = await prisma.weeklyReport.updateMany({ where: { id: report.id, submittedAt: null, finalBody: null }, data: { body: enhancedBody, aiSummary: enhancedBody } });

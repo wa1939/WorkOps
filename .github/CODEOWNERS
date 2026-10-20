@@ -1,0 +1,7 @@
+# The maintainer reviews application, infrastructure and security changes.
+* @wa1939
+/.github/ @wa1939
+/prisma/ @wa1939
+/src/lib/auth.ts @wa1939
+/src/lib/ai/ @wa1939
+/src/lib/sabah/providers/ @wa1939
