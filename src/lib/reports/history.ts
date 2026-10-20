@@ -2,7 +2,8 @@ import crypto from "node:crypto";
 import { Prisma } from "@prisma/client";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { callGLMText, DEFAULT_GLM_MODEL } from "@/lib/glm";
+import { callGLMText } from "@/lib/glm";
+import { resolveOperationalAiTarget } from "@/lib/ai/provider-resolution";
 import { getSabahFlags } from "@/lib/sabah/flags";
 import {
   buildBootstrapMemoPrompt,
@@ -537,7 +538,8 @@ export async function bootstrapReportHistory(input: ReportHistoryBootstrapInput,
   let memoryId: string | null = null;
   try {
     const currentMemo = await getReportStyleMemoForActor(ownerId);
-    const raw = await callGLMText(buildBootstrapMemoPrompt(entries, currentMemo), { model: DEFAULT_GLM_MODEL, temperature: 0.2, max_tokens: 900, thinking: "disabled" });
+    const target = await resolveOperationalAiTarget();
+    const raw = await callGLMText(buildBootstrapMemoPrompt(entries, currentMemo), { provider: target.provider, model: target.model, fallbacks: target.fallbacks, credentials: target.credentials, temperature: 0.2, max_tokens: 900, thinking: "disabled" });
     const memo = validateMemo(raw);
     if (memo) {
       const persisted = await persistReportStyleMemo({

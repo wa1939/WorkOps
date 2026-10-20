@@ -1,6 +1,6 @@
 # Capabilities
 
-A feature-by-feature reference. "Core" features work with just a database and an `AUTH_SECRET`; anything that talks to the outside world is listed with its configuration requirement. See [Configuration](configuration.md) for the variables and [Architecture](architecture.md) for how the pieces fit.
+A feature-by-feature reference. "Core" features work with just a database and an `AUTH_SECRET`; anything that talks to the outside world is listed with its configuration requirement. See [Configuration](configuration.md) for the variables and [Architecture](architecture.md) for how the pieces fit. Workload, capacity, and utilization are described in depth in [Workload & capacity](features/workload-capacity.md).
 
 ## Work management (core)
 
@@ -12,7 +12,11 @@ A feature-by-feature reference. "Core" features work with just a database and an
 | Reminders | Task due-soon/overdue reminders and per-task reminders | Delivery channel depends on notification configuration |
 | Time tracking | Time log entries and an active timer per task | Feeds utilization and reports |
 | Projects | Objectives, outputs, risks, stages, health, members with access levels, and a roadmap Gantt per project | |
-| Workload planner | Team workload view used to balance assignments | Aggregates are refreshed by a scheduled team-load job |
+| Workload planner | Per-person, per-day planning surface over assignments, leave, and time: available/booked/overloaded states, load meters, project rows, drag-to-reassign and drag-to-reschedule | One shared load engine — [Workload & capacity](features/workload-capacity.md) |
+| Forward capacity heatmap | Upcoming weeks of load per person on the team page, with the top contributing tasks and each task's effort source | Load snapshots are refreshed by a scheduled team-load job |
+| Utilization report | Member-by-week capacity vs logged time vs planned hours, weekly trend chart, CSV export | Measures logged time against capacity — see [what that means](features/workload-capacity.md#utilization-what-it-measures) |
+| Effort estimation | Missing task estimates fall back through manual → cached AI → personal median → department median → 2-hour default, with per-person confidence | The AI step is optional ([AI configuration](configuration.md#ai-optional)) |
+| Estimates vs actuals | Per-task variance between effort estimates and logged time, surfaced in time reporting and the estimate-vs-actual report | |
 | Department KPIs | Shared scorecard — KPIs belong to the department, with updates, status, and reminder jobs | |
 | PMO & external actions | Track commitments owned outside the team: actions, owners, evidence, reminder rules, follow-up events, portfolio and timeline views | Reminders run as a scheduled job; exports available |
 | Reports | Weekly reports, time reports, utilization views, project reports; optional AI-assisted report generation | AI-assist requires [AI configuration](configuration.md#ai-optional) |
@@ -68,7 +72,7 @@ Nothing AI-related runs until a provider is configured. With configuration in pl
 | Connectors & webhooks | Inbound integration surfaces with delivery tracking — **explicit admin configuration required** |
 | Consent tracking | Processing-consent decisions are recorded per user |
 
-Bring your own OpenAI key, native Anthropic/Claude key, or custom OpenAI-compatible endpoint such as Nuha. Configure the provider, key and exact model ID; custom services also need an endpoint. GLM remains backward-compatible, not mandatory. Administrator CHAT/COMPRESSION assignments support editable model identifiers and encrypted credentials. New generic routes have no implicit cross-vendor fallback. Prompts and authorized task context go to the selected provider; individual models must support the tools/images used by each feature. See [AI configuration](configuration.md#ai-optional), [Architecture → AI subsystem](architecture.md#ai-subsystem), and [FAQ](faq.md#ai-and-your-data).
+Bring your own OpenAI key, native Anthropic/Claude key, or custom OpenAI-compatible endpoint such as Nuha — see [AI providers](ai-providers.md) for choosing and configuring one. Configure the provider, key and exact model ID; custom services also need an endpoint. GLM remains backward-compatible, not mandatory. Administrator CHAT/COMPRESSION assignments support editable model identifiers and encrypted credentials. New generic routes have no implicit cross-vendor fallback. Prompts and authorized task context go to the selected provider; individual models must support the tools/images used by each feature. See [AI configuration](configuration.md#ai-optional), [Architecture → AI subsystem](architecture.md#ai-subsystem), and [FAQ](faq.md#ai-and-your-data).
 
 ## Platform
 

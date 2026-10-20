@@ -4,7 +4,7 @@
 
 # WorkOps
 
-**Department work management — tasks, projects, capacity, and reporting — self-hosted under your control.**
+**Self-hosted task, project and workload management — built for departments.**
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
@@ -12,22 +12,48 @@
 
 </div>
 
-WorkOps is an open-source work-management application for departments and small teams. It combines day-to-day task tracking, project delivery, workload planning, time and reporting, department-level KPIs, and an optional AI assistant in a single self-hostable web app.
+WorkOps is an MIT-licensed work-management application you run yourself, in front of your own PostgreSQL database. It covers the whole operating rhythm of a department: day-to-day **task management**, structured **project management**, deliberate **workload management and capacity planning**, time and utilization reporting, portfolio-style tracking of commitments owned outside the team, a shared department KPI scorecard, and an optional bring-your-own-key AI assistant.
 
-It is designed for how departments actually work: shared goals owned by the whole team, managers coordinating capacity across people, and individual members who need one clear view of what is theirs today. Your data stays in your own PostgreSQL database.
+It is designed for how departments actually work: shared goals owned by the whole team, managers coordinating capacity across people, and individual members who need one clear view of what is theirs today.
+
+**Who it is for**
+
+- **Department and team leads** who need to see who is overloaded *before* assigning the next piece of work — forward load, leave-aware capacity, and a planner for rebalancing.
+- **Members** who want one clear list of their work, quick time logging, and fewer status meetings.
+- **PMO-style coordinators** who chase commitments owned outside the team — vendors, other departments, partners — and need evidence and follow-up history, not another spreadsheet.
+- **Self-hosters** who want department tooling under their own control: your database, your AI provider, your data.
 
 ## Highlights
 
-- **Tasks, three ways** — spreadsheet-style grid, Kanban board, and Gantt timeline views of the same tasks, plus an unassigned "floating pool" that members can claim.
+- **Task management that fits how you look at work** — a spreadsheet-style list and a Kanban board over the same tasks, sharing one filter state carried in the URL, so a filtered view is a link you can paste. Scope tabs (My tasks / All tasks / Related to me, plus Created by me and Unassigned), a person picker, search, status, priority, and due-date filters, and sorting. An unassigned **floating pool** lets members claim work.
 - **Projects with structure** — objectives, outputs, risks, stages, health, members, and a project roadmap on a Gantt timeline.
-- **Load management & capacity planning** — see assignments and estimated effort across the team, review workload and utilization, and identify where to rebalance work before assigning more.
-- **Reports & work briefs** — track time with entries and timers, review utilization and weekly progress, and generate AI-assisted executive summaries and project-scoped briefs using your chosen provider.
+- **Workload management & capacity planning** — a per-person planner with available/booked/overloaded states and drag-to-reassign, a forward capacity heatmap on the team page, effort estimates with a documented fallback chain, leave-aware capacity, and a utilization report that separates what was planned from what was actually logged. [How the numbers work](docs/features/workload-capacity.md).
+- **Time & utilization reporting** — time entries and timers per task, estimate-vs-actual variance, member-by-week capacity vs logged time with CSV export, and AI-assisted executive summaries and project briefs where AI is configured.
 - **PMO & external actions** — follow projects and outside-team commitments through portfolio/timeline views, with accountable owners, due dates, evidence, reminder rules, follow-up history, and exports.
 - **Department KPIs** — a shared scorecard with updates and reminders. KPIs belong to the department, not to individuals.
 - **Custom views & personal home** — a block-based editor (task lists, charts, stat tiles, notes, embeds) for building saved views, with an opt-in custom home page.
-- **The operational periphery** — notes (markdown + tags), leave requests with task handover, announcements, an inbox with notification preferences, and case studies.
+- **The operational periphery** — notes (markdown + tags), leave requests with task handover plans, announcements, an inbox with notification preferences, and case studies.
 - **Roles & workspaces** — department-level roles (Admin, Manager, Member, Viewer) plus scoped workspaces with their own membership.
-- **Optional AI assistant (Sabah)** — chat, task intake, and field assistance with permission-grounded, reviewable workflows. Explicit approvals for write actions; fully optional and off unless you configure it.
+- **Optional AI assistant (Sabah), bring your own provider** — OpenAI, native Claude/Anthropic, or a custom OpenAI-compatible service (Nuha, a local server, a proxy). Chat, task intake, and field assistance with permission-grounded, reviewable workflows; explicit approvals for write actions. Fully optional and off unless you configure it. [AI providers](docs/ai-providers.md).
+
+## Workload is more than a task count
+
+A board can show fifty tasks without telling you whether they represent five hours or five weeks. WorkOps adds the planning context:
+
+- **Before assigning work:** inspect the team heatmap, weekly load drivers and leave-adjusted capacity instead of relying on task totals.
+- **While planning:** use the daily planner to review scheduled effort, assignment shares and work that cannot fit; reassign or reschedule with the same task permissions.
+- **When estimates are missing:** the weekly load engine uses a labeled effort fallback chain and confidence signal. The daily planner keeps unknown effort in its backlog rather than presenting a guessed schedule.
+- **When people are away:** approved leave reduces capacity; handover plans record coverage without silently changing task ownership.
+- **After delivery:** compare estimates with recorded time and review weekly utilization. Logged hours support planning conversations; they are not a productivity or performance score.
+
+The weekly heatmap, daily planner and utilization report answer different questions. [The workload guide](docs/features/workload-capacity.md) explains their inputs, formulas, calendar defaults and limits.
+
+## One connected operating rhythm
+
+1. **Capture:** create a task, claim shared work, or review an AI-drafted task before saving it.
+2. **Plan:** connect work to projects, review capacity and leave, and agree priorities and ownership.
+3. **Deliver:** work from personal or team views; follow dependencies, external commitments and requests for help.
+4. **Review:** use time reports, project briefs, shared KPIs and saved views to see progress and decide what changes next.
 
 ## Screenshots
 
@@ -44,6 +70,8 @@ These are genuine captures of this checkout running locally with synthetic demo 
 | [Getting started](docs/getting-started.md) | Install, configure, initialize the database, first admin, first run |
 | [User guide](docs/user-guide.md) | How each module works, day to day |
 | [Capabilities](docs/capabilities.md) | Feature-by-feature reference, including what requires configuration |
+| [Workload & capacity](docs/features/workload-capacity.md) | How load, effort estimates, capacity, and utilization are actually computed — and what they do and don't measure |
+| [AI providers](docs/ai-providers.md) | Choosing and configuring OpenAI, Claude, or a custom compatible provider |
 | [Configuration](docs/configuration.md) | Environment variables, integrations, scheduled jobs |
 | [Architecture](docs/architecture.md) | Stack, data model, auth, and the AI subsystem |
 | [Development](docs/development.md) | Local development, tests, migrations |
@@ -100,7 +128,7 @@ Database setup is **opt-in, never implicit**. The two first-install gates initia
 
 This flow is documented and has been exercised locally against the real build; it has not yet been verified on a live cloud deployment, and supplying your own PostgreSQL database is part of setup — it is not a zero-config deploy.
 
-Scheduled background jobs (reminders, digests, recurring tasks) run through authenticated HTTP endpoints — [Configuration](docs/configuration.md) covers how to trigger them.
+Scheduled background jobs (reminders, digests, recurring tasks, the team-load refresh) run through authenticated HTTP endpoints — [Configuration](docs/configuration.md) covers how to trigger them. Scheduling them is opt-in, and the workload views compute live even when no schedule is configured.
 
 ## Configuration at a glance
 
@@ -119,11 +147,12 @@ The full reference, including optional web-push and webhook settings, is in [doc
 
 ## About the AI features
 
-AI in WorkOps is **optional and bring-your-own-provider**. Choose OpenAI, native Anthropic/Claude, or a custom OpenAI-compatible service such as Nuha; define the key and exact model ID, plus the endpoint for custom services. GLM is supported for backward compatibility, not required. See [AI configuration](docs/configuration.md#ai-optional). When enabled:
+AI in WorkOps is **optional and bring-your-own-provider** — there is no bundled model and no hosted AI service operated by the project. Choose OpenAI, native Anthropic/Claude, or a custom OpenAI-compatible service such as Nuha or a local model server; define the key and exact model ID, plus the endpoint for custom services. GLM is supported for backward compatibility, not required. See [AI providers](docs/ai-providers.md) and [AI configuration](docs/configuration.md#ai-optional). When enabled:
 
 - The assistant operates within the signed-in user's permissions — it does not see data the user cannot see.
 - Write actions go through reviewable workflows with explicit approvals.
 - Prompts and context are sent to the model provider you configure; self-hosters choose which provider (and therefore which jurisdiction) that is.
+- AI can also cache effort estimates on unestimated tasks for the weekly team-load engine. The daily planner has separate estimate inputs; [the workload guide](docs/features/workload-capacity.md) explains the distinction. Load planning works without AI.
 - Advanced job/monitor/model-assignment features require explicit admin configuration.
 
 Details: [docs/architecture.md](docs/architecture.md) (AI subsystem) and [docs/capabilities.md](docs/capabilities.md).

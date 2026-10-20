@@ -8,10 +8,8 @@ import {
     taskGridStatusSchema,
     type TaskGridInput,
 } from "@/lib/tasks/grid-query";
-import { currentRiyadhWeekWindow } from "@/lib/week";
-
-const RIYADH_OFFSET_MS = 3 * 60 * 60 * 1000;
-const DAY_MS = 24 * 60 * 60 * 1000;
+import { currentRiyadhWeekWindow, riyadhDayWindow } from "@/lib/week";
+export { riyadhDayWindow } from "@/lib/week";
 const MAX_FILTER_VALUES = 100;
 export const MAX_VIEW_TASK_OFFSET = 10_000;
 
@@ -135,12 +133,6 @@ function parseOffset(value: unknown): number {
     return offsetSchema.parse(value ?? 0);
 }
 
-export function riyadhDayWindow(now: Date): { start: Date; end: Date } {
-    const riyadhNow = new Date(now.getTime() + RIYADH_OFFSET_MS);
-    riyadhNow.setUTCHours(0, 0, 0, 0);
-    const start = new Date(riyadhNow.getTime() - RIYADH_OFFSET_MS);
-    return { start, end: new Date(start.getTime() + DAY_MS) };
-}
 
 function dateRangeFilters(dueRange: z.infer<typeof dueRangeSchema>, now: Date): {
     dueAfter?: string;

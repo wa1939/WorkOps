@@ -6,6 +6,17 @@ vi.mock("@/lib/prisma", () => ({ prisma: {} }));
 vi.mock("@/lib/reports/history", () => ({ getReportPromptExtrasForActor: vi.fn() }));
 vi.mock("@/lib/glm", () => ({ DEFAULT_GLM_MODEL: "glm-5.3-flash", callGLMText: (...args: unknown[]) => callGLMText(...args) }));
 
+const resolveOperationalAiTarget = vi.fn(async () => ({
+    provider: "zai" as const,
+    model: "glm-5.3-flash" as const,
+    fallbacks: [
+        { providerKey: "zai" as const, modelName: "glm-4.5-flash" },
+        { providerKey: "nuha" as const, modelName: "Nuha-2.1" },
+    ],
+    credentials: {} as Record<string, string>,
+}));
+vi.mock("@/lib/ai/provider-resolution", () => ({ resolveOperationalAiTarget: () => resolveOperationalAiTarget() }));
+
 import { generateExecutiveSummary, projectVisibilityWhere } from "./executive-summary";
 
 describe("project brief visibility", () => {
@@ -37,5 +48,23 @@ describe("executive summary model routing", () => {
         await expect(generateExecutiveSummary({ done: [], doing: [], overdue: [], upcoming: [], kpiRisk: [] })).resolves.toHaveLength(3);
 
         expect(callGLMText.mock.calls[0][1]).toMatchObject({ model: "glm-5.3-flash" });
+    });
+
+    it("routes through the resolved operational target for stored-credential deployments", async () => {
+        resolveOperationalAiTarget.mockResolvedValueOnce({
+            provider: "openai",
+            model: "gpt-4o-mini",
+            fallbacks: [],
+            credentials: { openai: "stored-key" },
+        } as never);
+
+        await expect(generateExecutiveSummary({ done: [], doing: [], overdue: [], upcoming: [], kpiRisk: [] })).resolves.toHaveLength(3);
+
+        expect(callGLMText.mock.calls[0][1]).toMatchObject({
+            provider: "openai",
+            model: "gpt-4o-mini",
+            fallbacks: [],
+            credentials: { openai: "stored-key" },
+        });
     });
 });

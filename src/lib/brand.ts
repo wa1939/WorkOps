@@ -10,9 +10,9 @@
 
 export const brand = {
     name: "WorkOps",
-    tagline: "The operations hub for departments",
+    tagline: "Self-hosted task and workload management",
     description:
-        "WorkOps is an open-source, self-hosted operations hub where a department runs its tasks, project timelines, shared KPIs, notes and announcements in one place.",
+        "Open-source task and project management with workload planning, team capacity, time tracking, shared KPIs and optional AI. Self-host WorkOps on your infrastructure.",
     author: { name: "Waleed Alhamed" },
     license: { name: "MIT", url: "https://opensource.org/licenses/MIT" },
     repository: {

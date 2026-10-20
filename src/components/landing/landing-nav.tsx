@@ -48,7 +48,7 @@ export function LandingNav() {
                     </a>
                     <Link
                         href="/login"
-                        className="rounded-md px-2 py-1 text-sm text-[hsl(213_31%_91%)] transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(263.4_70%_70%)]"
+                        className="inline-flex min-h-11 items-center rounded-md px-2 py-1 text-sm text-[hsl(213_31%_91%)] transition-colors hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(263.4_70%_70%)]"
                     >
                         Sign in
                     </Link>
@@ -56,7 +56,8 @@ export function LandingNav() {
                         href={brand.repository.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 rounded-lg border border-[hsl(215_28%_24%)] px-3 py-1.5 text-sm text-[hsl(213_31%_91%)] transition-colors hover:border-[hsl(215_28%_35%)] hover:bg-[hsl(215_28%_10%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(263.4_70%_70%)]"
+                        aria-label="WorkOps source on GitHub"
+                        className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-[hsl(215_28%_24%)] px-3 py-1.5 text-sm text-[hsl(213_31%_91%)] transition-colors hover:border-[hsl(215_28%_35%)] hover:bg-[hsl(215_28%_10%)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[hsl(263.4_70%_70%)]"
                     >
                         <Github className="h-4 w-4" aria-hidden="true" />
                         <span className="hidden sm:inline">GitHub</span>

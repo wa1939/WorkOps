@@ -1,5 +1,8 @@
 import { NextResponse } from "next/server";
-import { hasConfiguredAi } from "@/lib/ai/provider-config";
+import { assignmentHasCredential, configuredAiTarget, hasConfiguredAi } from "@/lib/ai/provider-config";
+import { DEFAULT_OPERATIONAL_MODEL } from "@/lib/ai/provider-resolution";
+import { resolveModelForRole } from "@/lib/sabah/providers/roles";
+import { resolveRuntimeProviderCredentials, type RuntimeProviderCredentials } from "@/lib/sabah/providers/admin-service";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { gatherWeekContext, gatherPromptExtras, generateExecutiveSummary, projectVisibilityWhere } from "@/lib/executive-summary";
@@ -31,7 +34,25 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
             return NextResponse.json({ error: "Project not found" }, { status: 404 });
         }
 
-        if (!hasConfiguredAi()) {
+        // Availability preflight. Resolve the saved CHAT assignment before the
+        // gate: an assignment may select a provider whose stored or environment
+        // credential exists even when the deployment default (legacy GLM/Nuha
+        // keys) is unconfigured. Mirrors the chat route; lookup failures keep
+        // the safe default, and invalid assignments fail visibly downstream
+        // when generation re-resolves the target through the shared resolver.
+        let runtimeCredentials: RuntimeProviderCredentials = {};
+        try {
+            runtimeCredentials = await resolveRuntimeProviderCredentials();
+        } catch {
+            runtimeCredentials = {};
+        }
+        let chatAssignment: Awaited<ReturnType<typeof resolveModelForRole>> | null = null;
+        try {
+            chatAssignment = await resolveModelForRole("CHAT", prisma, { defaultTarget: configuredAiTarget() ?? DEFAULT_OPERATIONAL_MODEL });
+        } catch {
+            chatAssignment = null;
+        }
+        if (!hasConfiguredAi(runtimeCredentials) && !assignmentHasCredential(chatAssignment, runtimeCredentials)) {
             return NextResponse.json({ error: "AI provider not configured" }, { status: 503 });
         }
 

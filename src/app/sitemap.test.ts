@@ -16,7 +16,8 @@ describe("sitemap", () => {
             expect(entries[0].url).toBe("https://workops.example.org/");
             expect(entries[0].changeFrequency).toBe("weekly");
             expect(entries[0].priority).toBe(1);
-            expect(entries[0].lastModified).toBeInstanceOf(Date);
+            // A request timestamp is not the page's content-modification date.
+            expect(entries[0]).not.toHaveProperty("lastModified");
         } finally {
             delete process.env.APP_BASE_URL;
         }

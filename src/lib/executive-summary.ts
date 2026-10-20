@@ -1,6 +1,8 @@
 import { prisma } from "@/lib/prisma";
 import { riyadhWeekWindow } from "@/lib/week";
-import { callGLMText, DEFAULT_GLM_MODEL } from "@/lib/glm";
+import { callGLMText } from "@/lib/glm";
+import { resolveOperationalAiTarget } from "@/lib/ai/provider-resolution";
+
 import {
     buildExecutivePrompt,
     normalizeSummaryLines,
@@ -138,7 +140,11 @@ export async function gatherPromptExtras(actorId: string): Promise<PromptExtras>
  */
 export async function generateExecutiveSummary(ctx: SummaryContext, extras?: PromptExtras): Promise<string[]> {
     const prompt = buildExecutivePrompt(ctx, extras);
-    const raw = await callGLMText(prompt, { model: DEFAULT_GLM_MODEL, temperature: 0.4, max_tokens: 2500 });
+    // Briefs and digests are operational AI: they follow the same saved CHAT
+    // assignment, stored credentials and bounded fallbacks as chat through the
+    // one shared resolver — never a second routing path.
+    const target = await resolveOperationalAiTarget();
+    const raw = await callGLMText(prompt, { provider: target.provider, model: target.model, fallbacks: target.fallbacks, credentials: target.credentials, temperature: 0.4, max_tokens: 2500 });
     const lines = normalizeSummaryLines(raw);
     if (lines.length < 3) {
         throw new Error("GLM returned no usable lines");

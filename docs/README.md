@@ -7,6 +7,9 @@ WorkOps is a self-hosted work-management application for departments and small t
 | 🚀 | [Getting started](getting-started.md) | Prerequisites, install, database initialization, first admin, first run |
 | 📖 | [User guide](user-guide.md) | Every module explained: tasks, projects, planner, PMO, KPIs, AI assistant |
 | 🧭 | [Capabilities](capabilities.md) | Feature-by-feature reference and what each requires |
+| | [Workload & capacity](features/workload-capacity.md) | Weekly load, daily planning, effort estimates, leave and utilization |
+| | [AI providers](ai-providers.md) | OpenAI, native Claude, compatible endpoints and administrator setup |
+| | [Marketing & discovery](marketing-and-discovery.md) | Public landing page, indexing boundaries and search/share metadata |
 | ⚙️ | [Configuration](configuration.md) | Environment variables, integrations, scheduled jobs |
 | 🏗️ | [Architecture](architecture.md) | Stack, data model, authentication, AI subsystem, notifications |
 | 🛠️ | [Development](development.md) | Local development, tests, migration discipline |

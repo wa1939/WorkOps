@@ -51,3 +51,26 @@ export function hasConfiguredAi(credentials: Partial<Record<AiProviderId, string
     if (selected) return isAiProvider(selected) && Boolean(credentials[selected] || environmentCredential(selected));
     return Boolean(process.env.GLM_API_KEY || process.env.NUHA_API_KEY);
 }
+
+/**
+ * Availability preflight for a resolved saved assignment. The assignment is
+ * serviceable when it — or one of its validated fallback targets — has a
+ * stored or environment credential, even when the deployment default provider
+ * is unconfigured. This mirrors the runtime: uncredentialed explicit targets
+ * are dropped, and a request only fails when no target holds a credential.
+ */
+export function assignmentHasCredential(
+    assignment: { providerKey: unknown; modelName?: unknown; config?: { fallbacks?: unknown } } | null | undefined,
+    credentials: Partial<Record<AiProviderId, string>> = {},
+): boolean {
+    if (!assignment || !isAiProvider(assignment.providerKey)) return false;
+    const providers: AiProviderId[] = [assignment.providerKey];
+    const fallbacks = assignment.config?.fallbacks;
+    if (Array.isArray(fallbacks)) {
+        for (const candidate of fallbacks) {
+            const providerKey = (candidate as { providerKey?: unknown } | null)?.providerKey;
+            if (isAiProvider(providerKey) && !providers.includes(providerKey)) providers.push(providerKey);
+        }
+    }
+    return providers.some((provider) => Boolean(credentials[provider] || environmentCredential(provider)));
+}

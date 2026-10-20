@@ -75,7 +75,9 @@ export interface TaskGridCursor {
 }
 
 export interface TaskGridFilters {
+    scope?: "all" | "assigned" | "related" | "created" | "unassigned";
     status?: string[];
+    statusNotIn?: string[];
     priority?: string[];
     assigneeIds?: string[];
     tagIds?: string[];

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { callGLM, callGLMText } from "@/lib/glm";
 import { buildOperationalAiTarget } from "./provider-resolution";
-import { hasConfiguredAi } from "./provider-config";
+import { assignmentHasCredential, hasConfiguredAi } from "./provider-config";
 
 const completion = () => new Response(JSON.stringify({ choices: [{ message: { content: "Configured provider answer" }, finish_reason: "stop" }] }), { status: 200 });
 function configure(provider: string, model: string) {
@@ -63,5 +63,44 @@ describe("bring your own AI provider", () => {
         expect((await callGLM({ messages: [{ role: "user", content: "hello" }] })).content).toBe("Native Claude answer");
         expect(String(fetcher.mock.calls[0][0])).toBe("https://api.anthropic.com/v1/messages");
         expect(JSON.parse(fetcher.mock.calls[0][1].body).model).toBe("operator-selected-claude");
+    });
+});
+
+describe("assignment availability preflight", () => {
+    afterEach(() => { vi.unstubAllEnvs(); });
+    it("treats a saved assignment as serviceable when only its provider holds a credential", () => {
+        vi.stubEnv("GLM_API_KEY", "");
+        vi.stubEnv("NUHA_API_KEY", "");
+        vi.stubEnv("AI_PROVIDER", "");
+        expect(assignmentHasCredential(
+            { providerKey: "anthropic", modelName: "operator-selected-claude", config: {} },
+            { anthropic: "synthetic-stored-claude-key" },
+        )).toBe(true);
+    });
+    it("honors environment credentials for the saved provider", () => {
+        vi.stubEnv("GLM_API_KEY", "");
+        vi.stubEnv("NUHA_API_KEY", "");
+        vi.stubEnv("AI_PROVIDER", "");
+        vi.stubEnv("OPENAI_API_KEY", "synthetic-env-openai-key");
+        expect(assignmentHasCredential({ providerKey: "openai", modelName: "operator-model", config: {} })).toBe(true);
+    });
+    it("accepts a validated fallback target that has a credential when the primary has none", () => {
+        vi.stubEnv("GLM_API_KEY", "");
+        vi.stubEnv("NUHA_API_KEY", "");
+        vi.stubEnv("AI_PROVIDER", "");
+        expect(assignmentHasCredential(
+            { providerKey: "zai", modelName: "glm-4.5-flash", config: { fallbacks: [{ providerKey: "nuha", modelName: "Nuha-2.1" }] } },
+            { nuha: "synthetic-stored-nuha-key" },
+        )).toBe(true);
+    });
+    it("reports an unconfigured assignment and unknown providers as unavailable", () => {
+        vi.stubEnv("GLM_API_KEY", "");
+        vi.stubEnv("NUHA_API_KEY", "");
+        vi.stubEnv("AI_PROVIDER", "");
+        vi.stubEnv("OPENAI_API_KEY", "");
+        vi.stubEnv("ANTHROPIC_API_KEY", "");
+        expect(assignmentHasCredential({ providerKey: "openai", modelName: "m", config: {} }, {})).toBe(false);
+        expect(assignmentHasCredential({ providerKey: "unimplemented-provider", modelName: "m", config: {} }, {})).toBe(false);
+        expect(assignmentHasCredential(null, { zai: "synthetic-stored-key" })).toBe(false);
     });
 });

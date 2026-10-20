@@ -43,14 +43,21 @@ Key workflows:
 
 A project carries structure beyond tasks: **objectives**, planned **outputs**, **risks**, **stages**, a **health** status, and **members** with per-project access levels. Each project has linked tasks and a **roadmap** on a Gantt timeline. Project state feeds the planner, reports, and (optionally) AI summaries.
 
-## Workload planner
+## Workload & capacity
 
-The planner shows how work is distributed across the team — assignments, time, and leave — so managers can rebalance before assigning more. Aggregates are refreshed by a scheduled team-load job.
+WorkOps treats workload as a first-class concern, not an afterthought — this is the part most task trackers skip.
+
+- **Planner** (`/planner`) — a per-person, per-day board of upcoming work combining assignments, approved leave, and effort. People show as **available**, **booked**, or **overloaded**; project rows sit alongside people. Drag a task to another person to reassign it, or to another day to reschedule.
+- **Team page** (`/team`) — who is working on what, grouped by your org tree, with this week's load per person, who is on leave, and a **forward heatmap** of the coming weeks. Each heat cell can be expanded to the tasks driving the load, labeled by where their hour figures came from.
+- **Effort fallback chain** — tasks without an estimate are never silently dropped: manual estimates win, then a cached AI estimate (if AI is configured), then the person's own median actual hours, then the department median, then a 2-hour default. Per-person confidence tells you how much of someone's load rests on real estimates.
+- **Leave-aware capacity** — approved leave pro-rates that week's capacity (a 5-day, Sunday–Thursday work week), so the same workload reads hotter when someone is out.
+
+Deep dive with the actual math and its limits: [Workload & capacity](features/workload-capacity.md).
 
 ## Time & reports
 
-- **Time entries** — log and review time per task, with exports.
-- **Utilization** — capacity views based on logged time and availability.
+- **Time entries** — log and review time per task, with a timer, exports, and per-task **estimate-vs-actual variance** (under / on / over).
+- **Utilization** (`/reports/utilization`) — member-by-week **capacity vs logged time vs planned hours**, a team utilization trend, and CSV export. Utilization here means *logged time divided by capacity* — it reflects time actually recorded, not planned effort or outcomes; see the [full explanation](features/workload-capacity.md#utilization-what-it-measures).
 - **Reports** — weekly reports and project reports; where AI is configured, drafting assistance is available and clearly marked as AI-generated.
 
 ## PMO & external actions
@@ -69,14 +76,14 @@ KPIs are shared department-level scorecard items — they have no individual own
 ## Notes, leave, and the periphery
 
 - **Notes** — markdown pages with tags for runbooks, how-tos, and decisions.
-- **Leave** — request leave with a task **handover** plan; returning members file a return report. Handover keeps work moving while someone is out.
+- **Leave** — request leave with a task **handover** plan; returning members file a return report. Handover records which tasks need covering and posts a visible handover comment on each — it is advisory, and task assignments are not changed automatically. Approved leave also reduces that person's planned capacity (see [Workload & capacity](features/workload-capacity.md)).
 - **Announcements** — department-wide posts with priority levels and seen-tracking.
 - **Case studies** — structured department case-study requests with members and report output.
 - **Team** — the people view: who is here, their roles, and workload signals.
 
 ## Working with Sabah (optional AI assistant)
 
-Sabah is WorkOps' built-in assistant. **It does nothing unless the deployment has configured an AI provider.** When enabled:
+Sabah is WorkOps' built-in assistant. **It does nothing unless the deployment has configured an AI provider** — bring your own OpenAI, native Claude/Anthropic, or custom OpenAI-compatible key; see [AI providers](ai-providers.md). When enabled:
 
 - **Chat** — ask about your work; answers are grounded in data **you already have permission to see**.
 - **Task intake** — describe work in natural language; Sabah drafts structured tasks that you review before anything is created.

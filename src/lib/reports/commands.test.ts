@@ -35,6 +35,14 @@ vi.mock("@/lib/prisma", () => ({
 }));
 vi.mock("@/lib/glm", () => ({ DEFAULT_GLM_MODEL: "glm-5.3-flash", callGLMText: (...args: unknown[]) => callGLMText(...args) }));
 
+const resolveOperationalAiTarget = vi.fn(async () => ({
+  provider: "zai" as const,
+  model: "glm-5.3-flash" as const,
+  fallbacks: [{ providerKey: "zai" as const, modelName: "glm-4.5-flash" }, { providerKey: "nuha" as const, modelName: "Nuha-2.1" }],
+  credentials: {} as Record<string, string>,
+}));
+vi.mock("@/lib/ai/provider-resolution", () => ({ resolveOperationalAiTarget: () => resolveOperationalAiTarget() }));
+
 import { compareReportPeriods, enhanceReport, finalizeReport, generateDraftForPeriod, getWeeklyReportForActor, reportCapabilityNames, reportSources, resolveReportEditorBody, saveFinalBody, saveReportDraft, type ReportActor } from "./commands";
 
 const actor: ReportActor = { id: "u1", role: "MANAGER", departmentIds: ["d1"] };
@@ -98,6 +106,23 @@ describe("report command contract", () => {
     await expect(enhanceReport({ reportId: "r1" }, { ...actor, role: "ADMIN" })).resolves.toMatchObject({ body: "generated" });
 
     expect(callGLMText.mock.calls[0][1]).toMatchObject({ model: "glm-5.3-flash", thinking: "disabled" });
+  });
+
+  it("routes draft generation through the resolved operational target for stored-credential deployments", async () => {
+    resolveOperationalAiTarget.mockResolvedValueOnce({ provider: "openai", model: "gpt-4o-mini", fallbacks: [], credentials: { openai: "stored-key" } } as never);
+
+    await generateDraftForPeriod({ weekStart: start, weekEnd: end }, actor);
+
+    expect(callGLMText.mock.calls[0][1]).toMatchObject({ provider: "openai", model: "gpt-4o-mini", fallbacks: [], credentials: { openai: "stored-key" }, thinking: "disabled" });
+  });
+
+  it("keeps finalization durable when the operational target cannot be resolved", async () => {
+    findUnique.mockResolvedValueOnce(report).mockResolvedValueOnce({ ...report, finalBody: "final", submittedAt: new Date() });
+    resolveOperationalAiTarget.mockRejectedValueOnce(new Error("Configured CHAT provider or model is unsupported: openai/gpt-4o-mini"));
+
+    const result = await finalizeReport({ reportId: "r1", finalBody: "final", approved: true }, { ...actor, role: "ADMIN" });
+
+    expect(result).toMatchObject({ verified: true, learned: false });
   });
 
   it("feeds the actor's current approved personal report memo into the next draft", async () => {

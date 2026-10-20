@@ -24,6 +24,7 @@ const publicDocs = new Set([
   'configuration.md', 'capabilities.md', 'faq.md', 'demo-data.md',
   'deployment/vercel.md', 'deployment/self-hosting.md', 'deployment/database.md',
   'security/workspace-ownership.csv.md',
+  'ai-providers.md', 'features/workload-capacity.md', 'marketing-and-discovery.md',
 ]);
 const privateScripts = new Set([
   'scripts/apply-prod-migration.js', 'scripts/neon-sql.js', 'scripts/safe-migrate.sh',

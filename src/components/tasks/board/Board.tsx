@@ -14,6 +14,9 @@ import {
 } from "@dnd-kit/core";
 import { sortableKeyboardCoordinates } from "@dnd-kit/sortable";
 import type { Priority, TaskStatus } from "@prisma/client";
+import { useSearchParams } from "next/navigation";
+import { buildBaseParams } from "../grid/useTaskGrid";
+import type { TaskGridFilters } from "../grid/grid-types";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -60,6 +63,7 @@ type BoardResponse = {
 type BoardProps = {
     initialTasks?: BoardTask[];
     endpoint?: string;
+    filters?: TaskGridFilters;
 };
 
 function isTaskStatus(value: unknown): value is TaskStatus {
@@ -76,9 +80,8 @@ function statusFromDrop(over: DragEndEvent["over"]): TaskStatus | null {
     return isTaskStatus(columnStatus) ? columnStatus : null;
 }
 
-function boardRequestUrl(endpoint: string): string {
-    if (typeof window === "undefined") return endpoint;
-    const params = new URLSearchParams(window.location.search);
+function boardRequestUrl(endpoint: string, search: string, filters?: TaskGridFilters): string {
+    const params = buildBaseParams(search, "none", filters);
     params.delete("view");
     params.delete("legacy");
     params.delete("cursor");
@@ -86,8 +89,11 @@ function boardRequestUrl(endpoint: string): string {
     return query ? `${endpoint}?${query}` : endpoint;
 }
 
-export function Board({ initialTasks, endpoint = "/api/tasks/board" }: BoardProps = {}) {
+export function Board({ initialTasks, endpoint = "/api/tasks/board", filters }: BoardProps = {}) {
     const { toast } = useToast();
+    const searchParams = useSearchParams();
+    const search = searchParams?.toString() ?? "";
+    const requestUrl = boardRequestUrl(endpoint, search, filters);
     const [tasks, setTasks] = useState<BoardTask[]>(initialTasks ?? []);
     const [activeId, setActiveId] = useState<string | null>(null);
     const [loading, setLoading] = useState(initialTasks === undefined);
@@ -115,7 +121,7 @@ export function Board({ initialTasks, endpoint = "/api/tasks/board" }: BoardProp
         setLoading(true);
         setError(null);
 
-        fetch(boardRequestUrl(endpoint), { cache: "no-store", signal: controller.signal })
+        fetch(requestUrl, { cache: "no-store", signal: controller.signal })
             .then(async (response) => {
                 const payload = await response.json() as BoardResponse;
                 if (!response.ok) {
@@ -140,7 +146,7 @@ export function Board({ initialTasks, endpoint = "/api/tasks/board" }: BoardProp
             active = false;
             controller.abort();
         };
-    }, [endpoint, initialTasks, reloadToken]);
+    }, [requestUrl, initialTasks, reloadToken]);
 
     const persistMove = useCallback(async (
         task: BoardTask,

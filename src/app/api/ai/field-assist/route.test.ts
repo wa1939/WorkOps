@@ -66,6 +66,22 @@ describe("POST /api/ai/field-assist", () => {
         expect((await POST(makeRequest(validBody))).status).toBe(200);
         expect(callGLM).toHaveBeenCalledWith(expect.objectContaining({ provider, model: "operator-assigned-model", credentials, fallbacks: [] }));
     });
+
+    it("serves a saved CHAT assignment whose provider credential exists while the deployment default is unconfigured", async () => {
+        delete process.env.GLM_API_KEY;
+        delete process.env.NUHA_API_KEY;
+        process.env.OPENAI_COMPATIBLE_API_KEY = "synthetic-env-compatible-key";
+        resolveRuntimeProviderCredentials.mockResolvedValue({});
+        resolveModelForRole.mockResolvedValue({ providerKey: "openai-compatible", modelName: "operator-assigned-model", config: {} });
+        callGLM.mockResolvedValue({ content: "Provider draft", tool_calls: [], finish_reason: "stop" });
+        try {
+            const response = await POST(makeRequest(validBody));
+            expect(response.status).toBe(200);
+            expect(callGLM).toHaveBeenCalledWith(expect.objectContaining({ provider: "openai-compatible", credentials: {} }));
+        } finally {
+            delete process.env.OPENAI_COMPATIBLE_API_KEY;
+        }
+    });
     it("returns 401 when unauthenticated", async () => {
         auth.mockResolvedValue(null);
         const response = await POST(makeRequest(validBody));
