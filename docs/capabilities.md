@@ -68,7 +68,7 @@ Nothing AI-related runs until a provider is configured. With configuration in pl
 | Connectors & webhooks | Inbound integration surfaces with delivery tracking — **explicit admin configuration required** |
 | Consent tracking | Processing-consent decisions are recorded per user |
 
-The AI provider defaults to a GLM-compatible cloud endpoint configured with `GLM_API_KEY`; admins can register alternative providers and assign models per role. Prompts and task context are sent to whatever provider you configure — see [Architecture → AI subsystem](architecture.md#ai-subsystem) for the data flow and [FAQ](faq.md#ai-and-your-data) for the privacy picture.
+Bring your own OpenAI key, native Anthropic/Claude key, or custom OpenAI-compatible endpoint such as Nuha. Configure the provider, key and exact model ID; custom services also need an endpoint. GLM remains backward-compatible, not mandatory. Administrator CHAT/COMPRESSION assignments support editable model identifiers and encrypted credentials. New generic routes have no implicit cross-vendor fallback. Prompts and authorized task context go to the selected provider; individual models must support the tools/images used by each feature. See [AI configuration](configuration.md#ai-optional), [Architecture → AI subsystem](architecture.md#ai-subsystem), and [FAQ](faq.md#ai-and-your-data).
 
 ## Platform
 

@@ -25,7 +25,7 @@ The tested runtime is Node.js 22.22.2; see `engines` in `package.json` for suppo
 ## AI and your data
 
 **Is AI required? What runs by default?**
-Nothing. No model provider is contacted until you set `GLM_API_KEY` or an admin registers provider credentials. All AI features — chat, intake, field assist, workflows — are inactive until then.
+Nothing. No model provider is contacted until you configure your chosen provider/key/model or an admin registers provider credentials and assigns a model. OpenAI, native Anthropic/Claude, custom OpenAI-compatible endpoints, and legacy GLM/Nuha are supported. All AI features — chat, intake, field assist, workflows — are inactive until configured; core work management remains available.
 
 **What data leaves my server when AI is enabled?**
 Prompts assembled from the context you're already viewing (task titles/descriptions, notes you ask about, scoped memory), sent over HTTPS to the provider **you** configured. Self-hosters choose the provider and therefore where that data goes. Nothing is sent to the WorkOps project — there is no WorkOps-side service.

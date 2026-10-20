@@ -1,3 +1,6 @@
+import { callAnthropic, streamAnthropic, AnthropicTransportError } from "./ai/anthropic-adapter";
+import { compatibleBaseUrl, configuredAiTarget, environmentCredential, isAiProvider, isModelName, type AiProviderId } from "./ai/provider-config";
+
 export const ZAI_GLM_BASE_URLS = {
     standardGlobal: "https://api.z.ai/api/paas/v4",
     standardChina: "https://open.bigmodel.cn/api/paas/v4",
@@ -24,7 +27,7 @@ export function resolveGLMBaseUrl(): string {
 }
 
 export type GLMModel = "glm-5" | "glm-5.3" | "glm-5.3-flash" | "glm-4.7" | "glm-4.5" | "glm-4.5-flash" | "glm-4.5-air" | "GLM-4.5-Flash" | (string & {});
-export type AiProvider = "zai" | "nuha";
+export type AiProvider = AiProviderId;
 
 const INSUFFICIENT_BALANCE_CODE = "1113";
 const FALLBACK_MODEL: GLMModel = "glm-4.5-flash";
@@ -59,6 +62,23 @@ function zaiTarget(model: string, credential?: string): ProviderTarget | null {
     const apiKey = credential ?? process.env.GLM_API_KEY;
     if (!apiKey) return null;
     return { url: `${resolveGLMBaseUrl()}/chat/completions`, apiKey, model, provider: "zai" };
+}
+
+function providerTarget(provider: AiProvider, model: string, opts: GLMCallOptions): ProviderTarget | null {
+    const credential = opts.credentials?.[provider] ?? environmentCredential(provider);
+    if (provider === "zai") return zaiTarget(model, credential);
+    if (provider === "nuha") return nuhaTarget(model, credential);
+    if (!credential) return null;
+    if (!isModelName(model)) throw new Error("Selected AI model is invalid");
+    const url = provider === "anthropic" ? "https://api.anthropic.com/v1/messages" : `${compatibleBaseUrl(provider)}/chat/completions`;
+    return { provider, model, apiKey: credential, url };
+}
+
+function defaultCallOptions(opts: GLMCallOptions): GLMCallOptions {
+    if (opts.provider !== undefined) return opts;
+    const configured = configuredAiTarget();
+    if (!configured) return opts;
+    return { ...opts, provider: configured.providerKey, model: configured.modelName };
 }
 
 export type GLMToolCall = {
@@ -202,7 +222,7 @@ function requestBody(target: ProviderTarget, opts: GLMCallOptions, stream: boole
     };
     // Nuha documents max_completion_tokens; GLM uses max_tokens.
     const maxTokens = opts.max_tokens ?? (stream ? 2500 : 2000);
-    if (target.provider === "nuha") body.max_completion_tokens = maxTokens;
+    if (target.provider === "nuha" || target.provider === "openai") body.max_completion_tokens = maxTokens;
     else body.max_tokens = maxTokens;
     if (target.provider === "zai" && opts.thinking !== undefined) {
         body.thinking = { type: opts.thinking };
@@ -265,13 +285,18 @@ async function doCall(
 // lower-cost GLM model, then Nuha only when its credential is configured.
 function resolveAutomaticTargets(opts: GLMCallOptions): ProviderTarget[] {
     const model = opts.model ?? DEFAULT_GLM_MODEL;
+    if (opts.provider && opts.provider !== "zai" && opts.provider !== "nuha") {
+        const selected = providerTarget(opts.provider, model, opts);
+        if (!selected) throw new Error("No configured credential for the selected AI provider");
+        return [selected];
+    }
     if (opts.provider === "nuha") {
-        const primary = nuhaTarget(opts.model, opts.credentials?.nuha);
+        const primary = nuhaTarget(opts.model, opts.credentials?.nuha ?? environmentCredential("nuha"));
         if (!primary) throw new Error("NUHA_API_KEY is not configured");
         const glm = zaiTarget(DEFAULT_GLM_MODEL, opts.credentials?.zai);
         return [primary, ...(glm ? [glm] : [])];
     }
-    const primary = zaiTarget(model, opts.credentials?.zai);
+    const primary = zaiTarget(model, opts.credentials?.zai ?? environmentCredential("zai"));
     if (!primary) {
         const nuha = nuhaTarget(undefined, opts.credentials?.nuha);
         if (nuha) return [nuha];
@@ -339,14 +364,15 @@ function explicitTargets(opts: GLMCallOptions): ProviderTarget[] {
     const targets: ProviderTarget[] = [];
     const seen = new Set<string>();
     for (const candidate of requested) {
-        if (!candidate || typeof candidate.modelName !== "string" ||
-            !(candidate.providerKey === "zai" && /^glm-[a-z0-9.-]{1,60}$/i.test(candidate.modelName) || candidate.providerKey === "nuha" && candidate.modelName === NUHA_MODEL)) {
+        if (!candidate || !isAiProvider(candidate.providerKey) || !isModelName(candidate.modelName) ||
+            (candidate.providerKey === "zai" && !/^glm-[a-z0-9.-]{1,60}$/i.test(candidate.modelName)) ||
+            (candidate.providerKey === "nuha" && candidate.modelName !== NUHA_MODEL)) {
             throw new Error("Unsupported fallback provider or model");
         }
         const identity = `${candidate.providerKey}:${candidate.modelName}`;
         if (seen.has(identity)) continue;
         seen.add(identity);
-        const target = candidate.providerKey === "zai" ? zaiTarget(candidate.modelName, opts.credentials?.zai) : nuhaTarget(candidate.modelName, opts.credentials?.nuha);
+        const target = providerTarget(candidate.providerKey, candidate.modelName, opts);
         if (target) targets.push(target);
     }
     if (!targets.length) throw new Error("No configured credential for selected AI targets");
@@ -354,17 +380,25 @@ function explicitTargets(opts: GLMCallOptions): ProviderTarget[] {
 }
 
 export async function callGLM(opts: GLMCallOptions): Promise<GLMResponse> {
+    opts = defaultCallOptions(opts);
     const automatic = opts.fallbacks === undefined;
     const targets = automatic ? resolveAutomaticTargets(opts) : explicitTargets(opts);
 
     const { observe } = createAttemptObserver(opts);
     const run = async (target: ProviderTarget): Promise<GLMResponse> => {
         return withRetry(() => observe(target, async () => {
+            if (target.provider === "anthropic") {
+                try { return await callAnthropic(opts, target.apiKey, target.model); }
+                catch (error) {
+                    if (error instanceof AnthropicTransportError) throw new GLMError(error.message, error.status, undefined, error.retryable);
+                    throw error;
+                }
+            }
             const result = await doCall(target, opts);
             if (result.ok) return result.data;
             const retryable = isRetryableStatus(result.status);
             throw new GLMError(
-                `${target.provider} API error ${result.status} (${target.model}): ${result.rawBody.substring(0, 300)}`,
+                `${target.provider} API error ${result.status} (${target.model})`,
                 result.status,
                 result.errorCode,
                 retryable,
@@ -617,12 +651,25 @@ interface PartialToolCall {
 }
 
 export async function* callGLMStream(opts: GLMCallOptions): AsyncGenerator<GLMStreamChunk> {
+    opts = defaultCallOptions(opts);
     const automatic = opts.fallbacks === undefined;
     const targets = automatic ? resolveAutomaticTargets(opts) : explicitTargets(opts);
 
     let emittedInAttempt = false;
     const { observe, emitStreamError } = createAttemptObserver(opts);
     const run = async function* (target: ProviderTarget): AsyncGenerator<GLMStreamChunk> {
+        if (target.provider === "anthropic") {
+            try {
+                for await (const chunk of streamAnthropic(opts, target.apiKey, target.model)) {
+                    emittedInAttempt = true;
+                    yield chunk;
+                }
+            } catch (error) {
+                if (error instanceof AnthropicTransportError) throw new GLMError(error.message, error.status, undefined, error.retryable);
+                throw error;
+            }
+            return;
+        }
         const resp = await withRetry(() => observe(target, () => doStreamCall(target, opts)), { signal: opts.signal });
         let reader: ReadableStreamDefaultReader<string> | undefined;
 

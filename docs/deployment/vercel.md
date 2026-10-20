@@ -48,7 +48,7 @@ Set in Project → Settings → Environment Variables.
 | `COMMUNICATION_INTERNAL_DOMAINS` | Comma-separated internal email domains. Fail-closed: absent/empty disables those features. |
 
 **Optional integrations** (unset = feature off): `RESEND_API_KEY` + `EMAIL_FROM`,
-`GLM_API_KEY`, `CRON_SECRET`, `SABAH_CREDENTIAL_KEY`, `WEB_PUSH_VAPID_*`, `AZURE_AD_*`.
+your AI provider/key/model (`AI_PROVIDER`, `AI_MODEL`, `AI_API_KEY`; custom services also use `AI_BASE_URL`), `CRON_SECRET`, `SABAH_CREDENTIAL_KEY`, `WEB_PUSH_VAPID_*`, `AZURE_AD_*`. Existing GLM/Nuha keys remain supported.
 Full reference: [configuration](../configuration.md).
 
 **Build gates** — set per-environment (Production vs Preview), never globally:

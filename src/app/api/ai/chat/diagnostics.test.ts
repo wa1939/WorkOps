@@ -16,7 +16,7 @@ vi.mock("@/lib/prisma", () => ({ prisma: {
 } }));
 vi.mock("@/lib/glm", () => ({ callGLMStream: vi.fn() }));
 vi.mock("@/lib/sabah/auth/actor", () => ({ toSabahActor: vi.fn(), SabahForbiddenError: class extends Error {} }));
-vi.mock("@/lib/sabah/providers/roles", () => ({ resolveModelForRole: vi.fn(), getConfiguredFallbacks: vi.fn() }));
+vi.mock("@/lib/sabah/providers/roles", async (importOriginal) => ({ ...await importOriginal<typeof import("@/lib/sabah/providers/roles")>(), resolveModelForRole: vi.fn(), getConfiguredFallbacks: vi.fn() }));
 vi.mock("@/lib/sabah/providers/admin-service", () => ({ resolveRuntimeProviderCredentials: vi.fn() }));
 vi.mock("@/lib/ai/executors", () => ({ runTool: vi.fn() }));
 vi.mock("@/lib/ai/tools", () => ({ AI_TOOLS: [] }));

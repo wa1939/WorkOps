@@ -26,7 +26,7 @@ vi.mock("@/lib/ai/system-prompt", () => ({
 }));
 vi.mock("@/lib/ai/audit", () => ({ logAiAction: vi.fn(async () => undefined) }));
 vi.mock("@/lib/sabah/continuity/compression", () => ({ compressConversation: vi.fn(async () => undefined) }));
-vi.mock("@/lib/sabah/providers/roles", () => ({ resolveModelForRole: vi.fn(), getConfiguredFallbacks: vi.fn() }));
+vi.mock("@/lib/sabah/providers/roles", async (importOriginal) => ({ ...await importOriginal<typeof import("@/lib/sabah/providers/roles")>(), resolveModelForRole: vi.fn(), getConfiguredFallbacks: vi.fn() }));
 vi.mock("@/lib/sabah/providers/admin-service", () => ({ resolveRuntimeProviderCredentials: vi.fn() }));
 vi.mock("@/lib/sabah/auth/actor", () => {
     class SabahForbiddenError extends Error {
@@ -176,7 +176,7 @@ describe("POST /api/ai/chat", () => {
     });
 
     it("refuses a pre-existing unsupported CHAT assignment without silently routing to Z.AI", async () => {
-        vi.mocked(resolveModelForRole).mockResolvedValue({ providerKey: "openai", modelName: "gpt-4o-mini", config: {} });
+        vi.mocked(resolveModelForRole).mockResolvedValue({ providerKey: "unimplemented-provider", modelName: "model", config: {} });
         const response = await POST(chatRequest({ message: "hi" }));
         const events = await readEvents(response);
         expect(glmMock).not.toHaveBeenCalled();

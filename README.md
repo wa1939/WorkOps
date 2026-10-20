@@ -20,9 +20,9 @@ It is designed for how departments actually work: shared goals owned by the whol
 
 - **Tasks, three ways** — spreadsheet-style grid, Kanban board, and Gantt timeline views of the same tasks, plus an unassigned "floating pool" that members can claim.
 - **Projects with structure** — objectives, outputs, risks, stages, health, members, and a project roadmap on a Gantt timeline.
-- **Workload planner** — see how work is distributed across the team before you assign more.
-- **Time & reporting** — time entries and timers per task, utilization views, and generated weekly reports.
-- **PMO & external actions** — track commitments that live outside your team, with owners, evidence, reminders, and follow-ups.
+- **Load management & capacity planning** — see assignments and estimated effort across the team, review workload and utilization, and identify where to rebalance work before assigning more.
+- **Reports & work briefs** — track time with entries and timers, review utilization and weekly progress, and generate AI-assisted executive summaries and project-scoped briefs using your chosen provider.
+- **PMO & external actions** — follow projects and outside-team commitments through portfolio/timeline views, with accountable owners, due dates, evidence, reminder rules, follow-up history, and exports.
 - **Department KPIs** — a shared scorecard with updates and reminders. KPIs belong to the department, not to individuals.
 - **Custom views & personal home** — a block-based editor (task lists, charts, stat tiles, notes, embeds) for building saved views, with an opt-in custom home page.
 - **The operational periphery** — notes (markdown + tags), leave requests with task handover, announcements, an inbox with notification preferences, and case studies.
@@ -110,7 +110,7 @@ Scheduled background jobs (reminders, digests, recurring tasks) run through auth
 | `AUTH_SECRET` | ✅ | Auth.js (NextAuth) JWT signing secret |
 | `NEXTAUTH_URL` / `APP_BASE_URL` | ✅ | Canonical origin for callbacks and links |
 | `RESEND_API_KEY`, `EMAIL_FROM` | optional | Transactional email (verification, password reset, notifications) |
-| `GLM_API_KEY` | optional | AI features via a GLM-compatible provider |
+| `AI_PROVIDER`, `AI_MODEL`, `AI_API_KEY` | optional | Your choice of OpenAI, native Anthropic/Claude, or a custom OpenAI-compatible service; custom services also use `AI_BASE_URL`. Existing GLM/Nuha variables remain supported. |
 | `AZURE_AD_CLIENT_ID` / `_SECRET` / `_TENANT_ID` | optional | Microsoft Entra ID sign-in alongside credentials |
 | `CRON_SECRET` | optional | Protects scheduled-job endpoints |
 | `SABAH_CREDENTIAL_KEY` | optional | Encrypts admin-managed AI provider credentials |
@@ -119,7 +119,7 @@ The full reference, including optional web-push and webhook settings, is in [doc
 
 ## About the AI features
 
-AI in WorkOps is **optional**. Nothing calls out to a model provider until you configure one (via `GLM_API_KEY` or admin-managed provider credentials). When enabled:
+AI in WorkOps is **optional and bring-your-own-provider**. Choose OpenAI, native Anthropic/Claude, or a custom OpenAI-compatible service such as Nuha; define the key and exact model ID, plus the endpoint for custom services. GLM is supported for backward compatibility, not required. See [AI configuration](docs/configuration.md#ai-optional). When enabled:
 
 - The assistant operates within the signed-in user's permissions — it does not see data the user cannot see.
 - Write actions go through reviewable workflows with explicit approvals.

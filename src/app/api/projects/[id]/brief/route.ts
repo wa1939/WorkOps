@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hasConfiguredAi } from "@/lib/ai/provider-config";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { gatherWeekContext, gatherPromptExtras, generateExecutiveSummary, projectVisibilityWhere } from "@/lib/executive-summary";
@@ -30,8 +31,8 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
             return NextResponse.json({ error: "Project not found" }, { status: 404 });
         }
 
-        if (!process.env.GLM_API_KEY) {
-            return NextResponse.json({ error: "GLM API key not configured" }, { status: 500 });
+        if (!hasConfiguredAi()) {
+            return NextResponse.json({ error: "AI provider not configured" }, { status: 503 });
         }
 
         const ctx = await gatherWeekContext({ projectId: id, actor });

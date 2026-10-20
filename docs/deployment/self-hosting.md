@@ -61,7 +61,7 @@ Recommended:
 | `POSTGRES_DB`, `POSTGRES_USER` | **Choose explicitly before first start** (defaults `workops`/`workops`). The Postgres volume is initialized with them on first boot; changing them later means recreating the volume. |
 | `APP_PORT` | Host port for the app (default `3000`). |
 
-Optional integrations (unset = feature off): `RESEND_API_KEY`/`EMAIL_FROM`, `GLM_API_KEY`,
+Optional integrations (unset = feature off): `RESEND_API_KEY`/`EMAIL_FROM`, your AI provider/key/model (`AI_PROVIDER`, `AI_MODEL`, `AI_API_KEY`; custom services also use `AI_BASE_URL`),
 `CRON_SECRET`, `SABAH_CREDENTIAL_KEY`, `WEB_PUSH_VAPID_*`, `AZURE_AD_*`.
 Full reference: [configuration](../configuration.md).
 

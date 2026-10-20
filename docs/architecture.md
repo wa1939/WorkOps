@@ -12,7 +12,7 @@ WorkOps is a conventional, boring-on-purpose Next.js application: one deployable
 | UI | Tailwind CSS, Radix-based component primitives, Recharts, gantt-task-react, dnd-kit |
 | Email | Resend |
 | Push | Web push (subscriptions encrypted at rest) |
-| AI | GLM-compatible provider via an OpenAI-style chat-completions client; admin-managed alternative providers |
+| AI | Configurable OpenAI/native Anthropic/custom OpenAI-compatible transport, with encrypted admin credentials and model-role assignments |
 | Tests | Vitest (unit/component), Playwright (e2e), Testing Library |
 
 ## Repository layout
@@ -65,7 +65,7 @@ The full model is [`prisma/schema.prisma`](../prisma/schema.prisma).
 
 Purpose-built around restraint:
 
-- **Providers** — `src/lib/glm.ts` resolves a target provider: a GLM-compatible cloud endpoint (`GLM_API_KEY`) is the default path; an alternative "nuha" provider and admin-registered providers are used when configured. Model assignments per role are admin-managed; there are sensible flash-class defaults with a fallback model.
+- **Providers** — `src/lib/glm.ts` is the backward-compatible shared entry point. `src/lib/ai/provider-config.ts` resolves operator-owned provider/model/endpoint settings; `anthropic-adapter.ts` uses Anthropic's official SDK. OpenAI-compatible services reuse the bounded chat-completions transport. Generic providers have no automatic cross-vendor fallback; explicit admin CHAT/COMPRESSION assignments override deployment defaults. Legacy Z.AI/Nuha installations retain their existing behavior.
 - **Credentials** — admin-registered provider credentials are encrypted at rest with `SABAH_CREDENTIAL_KEY` (32-byte, base64). The key must exist before credentials are stored and must be preserved.
 - **Permissions** — every AI surface builds its context from what the signed-in user may read. The assistant has no separate data access.
 - **Write gates** — task actions and workflow steps that mutate data go through executors with write gates; multi-step workflows persist `AiApproval` records so humans approve significant actions. Tests cover the gate behavior (`executors.write-gate.test.ts`, `pmo-executors.test.ts`).

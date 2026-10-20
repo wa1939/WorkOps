@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { configuredAiTarget, hasConfiguredAi } from "@/lib/ai/provider-config";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -288,7 +289,7 @@ export async function POST(request: Request) {
         runtimeCredentials = {};
         await writeDiagnostic({ category: "CHAT_REQUEST_FAILURE", level: "WARN", message: "Runtime provider credential lookup failed; continuing with environment configuration", metadata: { stage: "runtime_credentials" } });
     }
-    if (!process.env.GLM_API_KEY && !process.env.NUHA_API_KEY && !runtimeCredentials.zai && !runtimeCredentials.nuha) {
+    if (!hasConfiguredAi(runtimeCredentials)) {
         return failureResponse(503, { error: "AI is not configured" }, "AI chat request rejected: AI is not configured");
     }
 
@@ -467,7 +468,7 @@ export async function POST(request: Request) {
                 // validated by the roles service and passed through unchanged.
                 let assignment: Awaited<ReturnType<typeof resolveModelForRole>> | null;
                 try {
-                    assignment = await resolveModelForRole("CHAT", prisma, { defaultTarget: DEFAULT_OPERATIONAL_MODEL });
+                    assignment = await resolveModelForRole("CHAT", prisma, { defaultTarget: configuredAiTarget() ?? DEFAULT_OPERATIONAL_MODEL });
                 } catch (error) {
                     // Invalid persisted assignments must fail visibly. A
                     // transient DB lookup failure may continue on the safe
@@ -479,7 +480,7 @@ export async function POST(request: Request) {
                     await writeDiagnostic({ category: "CHAT_MODEL_ASSIGNMENT_FALLBACK", level: "WARN", message: "CHAT model assignment lookup failed; using safe default", metadata: { stage: "model_assignment_lookup" } });
                     assignment = null;
                 }
-                let configuredFallbacks: ReadonlyArray<{ providerKey: "zai" | "nuha"; modelName: string }> | undefined;
+                let configuredFallbacks: ReadonlyArray<{ providerKey: AiProvider; modelName: string }> | undefined;
                 if (assignment) {
                     try {
                         configuredFallbacks = getConfiguredFallbacks("CHAT", JSON.stringify(assignment.config));

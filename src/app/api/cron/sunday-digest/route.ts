@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { hasConfiguredAi } from "@/lib/ai/provider-config";
 import { prisma } from "@/lib/prisma";
 import { auth } from "@/lib/auth";
 import { sendSundayDigest } from "@/lib/email";
@@ -129,8 +130,8 @@ async function buildDigest(ownerId?: string): Promise<{
     weekEnd: Date;
     counts: DigestCounts;
 }> {
-    if (!process.env.GLM_API_KEY) {
-        throw new Error("GLM_API_KEY not configured");
+    if (!hasConfiguredAi()) {
+        throw new Error("AI provider not configured");
     }
 
     const now = new Date();

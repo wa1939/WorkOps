@@ -6,7 +6,7 @@ This guide takes you from zero to a running WorkOps instance on your machine. Fo
 
 - **Node.js 22.22.2** or a compatible newer runtime (see `package.json`) and **npm**
 - **PostgreSQL** — the schema is developed against PostgreSQL 16
-- Optional integrations later: a Resend account (email), a GLM-compatible AI provider key (AI features)
+- Optional integrations later: a Resend account (email), your choice of OpenAI, Anthropic/Claude, or an OpenAI-compatible service (AI features)
 
 ## 1. Get the code and install
 

@@ -1,4 +1,5 @@
 import type { PrismaClient } from "@prisma/client";
+import { AI_PROVIDERS, isAiProvider, configuredAiTarget, type AiProviderId } from "@/lib/ai/provider-config";
 import { prisma } from "@/lib/prisma";
 import { callGLM, DEFAULT_GLM_MODEL, NUHA_MODEL } from "@/lib/glm";
 import { toSabahActor, SabahForbiddenError } from "@/lib/sabah/auth/actor";
@@ -68,19 +69,19 @@ export class ProviderCredentialNotConfiguredError extends Error {
     }
 }
 
-export type RuntimeProviderCredentials = Partial<Record<"zai" | "nuha", string>>;
+export type RuntimeProviderCredentials = Partial<Record<AiProviderId, string>>;
 
 /** Internal runtime-only credential resolution. Plaintext never crosses an API boundary. */
 export async function resolveRuntimeProviderCredentials(
     db: Pick<PrismaClient, "aiProviderCredential"> = prisma,
 ): Promise<RuntimeProviderCredentials> {
     const rows = await db.aiProviderCredential.findMany({
-        where: { isEnabled: true, providerKey: { in: ["zai", "nuha"] } },
+        where: { isEnabled: true, providerKey: { in: [...AI_PROVIDERS] } },
         select: { providerKey: true, encryptedValue: true, iv: true, authTag: true, keyVersion: true },
     });
     const credentials: RuntimeProviderCredentials = {};
     for (const row of rows) {
-        if (row.providerKey !== "zai" && row.providerKey !== "nuha") continue;
+        if (!isAiProvider(row.providerKey)) continue;
         try {
             credentials[row.providerKey] = decryptCredential({ encryptedValue: row.encryptedValue, iv: row.iv, authTag: row.authTag, keyVersion: row.keyVersion });
         } catch {
@@ -467,27 +468,30 @@ export async function testProviderCredential(
                 return { success: false, error: `API error: ${response.status}` };
             }
         } else if (credential.providerKey === "anthropic") {
-            const response = await fetch("https://api.anthropic.com/v1/messages", {
-                method: "POST",
+            const response = await fetch("https://api.anthropic.com/v1/models", {
+                method: "GET",
                 headers: {
                     "x-api-key": decrypted,
                     "anthropic-version": "2023-06-01",
                     "content-type": "application/json",
                 },
-                body: JSON.stringify({
-                    model: "claude-3-5-sonnet-20241022",
-                    max_tokens: 1,
-                    messages: [{ role: "user", content: "Hi" }],
-                }),
+
                 signal: controller.signal,
             });
 
             if (response.ok) {
                 success = true;
-                model = "claude-3-5-sonnet-20241022";
+
             } else {
                 return { success: false, error: `API error: ${response.status}` };
             }
+        } else if (credential.providerKey === "openai-compatible") {
+            const assignment = await db.aiModelAssignment.findUnique({ where: { role: "CHAT" } });
+            const target = assignment?.providerKey === "openai-compatible" ? assignment : configuredAiTarget();
+            if (!target || target.providerKey !== "openai-compatible") return { success: false, error: "Configure the custom endpoint and select its CHAT model before testing." };
+            await callGLM({ provider: "openai-compatible", model: target.modelName, credentials: { "openai-compatible": decrypted }, fallbacks: [], messages: [{ role: "user", content: "ping" }], max_tokens: 1, signal: controller.signal });
+            success = true;
+            model = target.modelName;
         } else if (credential.providerKey === "zai" || credential.providerKey === "nuha") {
             // Exercise the same bounded adapter used by operational runtime
             // calls. Explicit fallbacks: [] keeps a credential test from

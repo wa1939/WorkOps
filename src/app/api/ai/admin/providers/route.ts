@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
+import { AI_PROVIDERS, environmentCredential } from "@/lib/ai/provider-config";
 import { auth } from "@/lib/auth";
 import { toSabahActor, SabahForbiddenError } from "@/lib/sabah/auth/actor";
 import {
@@ -48,10 +49,7 @@ export async function GET(request: NextRequest) {
         // Environment-configured providers (no DB credential row) still need to
         // be listed so admins can assign model roles to them: zai (GLM) and
         // nuha (Nuha-2.1) read their keys from env vars.
-        const envProviders: Array<{ key: string; configured: boolean }> = [
-            { key: "zai", configured: Boolean(process.env.GLM_API_KEY) },
-            { key: "nuha", configured: Boolean(process.env.NUHA_API_KEY) },
-        ];
+        const envProviders = AI_PROVIDERS.map((key) => ({ key, configured: Boolean(environmentCredential(key)) }));
         const epoch = new Date(0).toISOString();
         for (const envProvider of envProviders) {
             if (providers.some((row) => row.providerKey === envProvider.key)) continue;

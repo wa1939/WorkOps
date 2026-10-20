@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { hasConfiguredAi } from "@/lib/ai/provider-config";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { toSabahActor, SabahForbiddenError } from "@/lib/sabah/auth/actor";
@@ -79,7 +80,7 @@ export async function POST(request: Request) {
     } catch {
         // Stored credentials are optional; environment credentials may still work.
     }
-    if (!process.env.GLM_API_KEY && !process.env.NUHA_API_KEY && !runtimeCredentials.zai && !runtimeCredentials.nuha) {
+    if (!hasConfiguredAi(runtimeCredentials)) {
         return NextResponse.json({ error: "AI is not configured" }, { status: 503 });
     }
 

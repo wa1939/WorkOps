@@ -1,3 +1,5 @@
+import { configuredAiTarget, isModelName, type AiProviderId } from "@/lib/ai/provider-config";
+
 export type AiModelRole = "CHAT" | "PLANNER" | "CRITIC" | "COMPRESSION" | "VISION" | "OCR" | "ASR" | "EMBEDDING";
 
 export type ModelAssignmentDb = {
@@ -7,7 +9,7 @@ export type ModelAssignmentDb = {
 };
 
 export type ModelTarget = {
-    providerKey: "zai" | "nuha";
+    providerKey: AiProviderId;
     modelName: string;
 };
 
@@ -49,8 +51,9 @@ export class InvalidModelAssignmentConfigError extends Error {
     }
 }
 
-export function isSupportedModelTarget(role: AiModelRole, providerKey: unknown, modelName: unknown): providerKey is "zai" | "nuha" {
+export function isSupportedModelTarget(role: AiModelRole, providerKey: unknown, modelName: unknown): providerKey is AiProviderId {
     if (typeof providerKey !== "string" || typeof modelName !== "string" || modelName.length === 0) return false;
+    if ((role === "CHAT" || role === "COMPRESSION") && (providerKey === "openai" || providerKey === "anthropic" || providerKey === "openai-compatible")) return isModelName(modelName);
     const targets = role === "CHAT"
         ? CHAT_MODEL_TARGETS
         : role === "COMPRESSION"
@@ -178,7 +181,7 @@ export async function resolveModelForRole(
         };
     }
 
-    const safeDefault = options.defaultTarget ?? SAFE_FALLBACKS[role];
+    const safeDefault = options.defaultTarget ?? ((role === "CHAT" || role === "COMPRESSION") ? configuredAiTarget() : undefined) ?? SAFE_FALLBACKS[role];
     return {
         providerKey: safeDefault.providerKey,
         modelName: safeDefault.modelName,

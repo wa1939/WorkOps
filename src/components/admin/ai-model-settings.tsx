@@ -55,6 +55,7 @@ const PROVIDER_MODELS: Record<string, readonly string[]> = {
     nuha: ["Nuha-2.1"],
     openai: ["gpt-4o-mini"],
     anthropic: ["claude-3-5-sonnet-20241022"],
+    "openai-compatible": ["your-model-id"],
 };
 const MODEL_CATALOG = (providerKey: string): readonly string[] => PROVIDER_MODELS[providerKey] ?? ["default"];
 const ROLE_LABEL: Record<string, string> = {
@@ -132,7 +133,7 @@ export function AiModelSettings({ api, isAdmin = true }: { api: ModelSettingsApi
     const providerOptions = useMemo(
         () => Array.from(new Set(
             providers
-                .filter((provider) => provider.isEnabled && (provider.providerKey === "zai" || provider.providerKey === "nuha"))
+                .filter((provider) => provider.isEnabled && provider.providerKey in PROVIDER_MODELS)
                 .map((provider) => provider.providerKey)
         )),
         [providers]
@@ -203,6 +204,7 @@ export function AiModelSettings({ api, isAdmin = true }: { api: ModelSettingsApi
         setMutationError(null);
         try {
             const primary = splitTarget(draft.primary);
+            if (draft.primary !== "" && !primary) throw new Error("Enter a model identifier before saving.");
             if (!primary) {
                 await api.assignRole(role, null, null, undefined);
             } else {
@@ -360,6 +362,17 @@ export function AiModelSettings({ api, isAdmin = true }: { api: ModelSettingsApi
                                         })}
                                     </select>
                                 </div>
+                                {["openai", "anthropic", "openai-compatible"].includes(draft.primary.split(":")[0]) && (
+                                    <label className="mt-2 block text-xs text-muted-foreground">
+                                        Custom {ROLE_LABEL[role]} model identifier
+                                        <input
+                                            aria-label={`Custom ${role} model`}
+                                            value={splitTarget(draft.primary)?.model ?? ""}
+                                            onChange={(event) => setRoleDraft(role, current, { primary: targetValue(draft.primary.split(":")[0], event.target.value) })}
+                                            className="mt-1 w-full rounded-lg border border-border bg-background px-2.5 py-1.5 text-sm text-foreground"
+                                        />
+                                    </label>
+                                )}
                                 <div className="mt-2 flex items-center gap-2">
                                     <label htmlFor={`fallback-mode-${role}`} className="w-32 shrink-0 text-xs text-muted-foreground">
                                         Fallback mode

@@ -27,10 +27,21 @@ Without email configured, password reset and email verification cannot complete 
 
 | Variable | Purpose |
 | --- | --- |
-| `GLM_API_KEY` | Key for a GLM-compatible provider (default AI target). The default model is a GLM flash-class model; admins can change model assignment per role. |
+| `AI_PROVIDER` | `openai`, `anthropic` (native Claude API), `openai-compatible` (custom service), `zai`, or `nuha`. Unset preserves legacy GLM/Nuha routing. |
+| `AI_MODEL` | Exact model identifier available to your account or local server. Model names are configurable, not restricted to bundled examples. Required with `AI_PROVIDER`. |
+| `AI_API_KEY` | Server-only key for the selected provider. Alternatively use `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `OPENAI_COMPATIBLE_API_KEY`. |
+| `AI_BASE_URL` | Operator-defined API base URL for `openai-compatible`, including the version path such as `/v1`. Used for custom Nuha deployments, proxies, or compatible local servers; never taken from chat input. |
+| `AI_ALLOW_HTTP` | Set exactly `1` only for an operator-owned HTTP endpoint, such as a local model server. HTTPS is required by default. Never embed credentials in the URL. |
+| `GLM_API_KEY` / `NUHA_API_KEY` | Backward-compatible keys for existing Z.AI and Nuha configurations. Neither is required for OpenAI, Claude, or a custom compatible service. |
 | `SABAH_CREDENTIAL_KEY` | Base64 32-byte key used to encrypt admin-managed provider credentials at rest. Set it **before** admins register provider credentials, and preserve it — losing it makes stored credentials undecryptable. |
 
-AI is off unless configured. With a key present, chat/intake/assist features activate; workflows, jobs, monitors, connectors, and model assignments are administered in-app by admins and additionally gated behind explicit configuration. See [Architecture → AI subsystem](architecture.md#ai-subsystem).
+Choose the provider, enter its key and model ID, and restart the application. For a custom OpenAI-compatible service, also set its endpoint. No source edits are needed. The shared text and streaming layer powers chat, task assistance, report generation, workload insights, and work briefs. OpenAI and compatible services use chat completions; Claude uses Anthropic's native Messages API through its official SDK, not an OpenAI shim.
+
+For example, OpenAI uses `AI_PROVIDER=openai` plus your `AI_MODEL` and `AI_API_KEY`; Claude uses `AI_PROVIDER=anthropic`; a custom Nuha endpoint uses `AI_PROVIDER=openai-compatible` plus `AI_BASE_URL`. API keys go only into server/platform secret settings, never the browser bundle or a committed file.
+
+Saved administrator CHAT/COMPRESSION role assignments take precedence over the deployment defaults for those roles. The admin screen supports encrypted keys and editable model identifiers. Custom endpoints remain server-operator configuration rather than arbitrary URLs submitted through a public API. New OpenAI, Anthropic, and custom routes do **not** silently fall back to other vendors; cross-provider fallback must be explicitly configured. Existing legacy GLM/Nuha fallback settings are preserved.
+
+AI is off unless configured. Core work management does not require an AI account. Models must support the features you use (chat, tool calls, images, structured output); protocol compatibility is not a guarantee that every model implements every feature. Provider protocol tests use synthetic, mocked responses, not a certification of every third-party service. Workflows, jobs, monitors and connectors additionally require explicit configuration. See [Architecture → AI subsystem](architecture.md#ai-subsystem).
 
 ## Microsoft Entra ID — optional
 
@@ -58,6 +69,8 @@ Endpoints present: due-task reminders, KPI reminders, PMO reminders, recurring-t
   (Check the individual endpoint for whether it expects GET or POST; the exact path list lives in `src/app/api/cron/`.)
 
 Jobs are safe to skip on a laptop dev setup — reminders simply won't fire.
+
+Optional GitHub scheduler templates are included for Sabah job-lease recovery and monitors. They make no requests by default. To opt in, configure the `sabah-schedulers` environment with your own HTTPS `APP_BASE_URL` and `CRON_SECRET` secrets, then set repository variable `SABAH_SCHEDULERS_ENABLED=true`. Manual dispatch is an explicit opt-in too. Do not copy another deployment's credentials, and avoid running duplicate schedules if your host already manages them.
 
 ## Push notifications & webhooks — optional
 
