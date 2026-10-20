@@ -6,6 +6,7 @@ const getSabahFlags = vi.fn();
 const callGLM = vi.fn();
 const checkRateLimit = vi.fn();
 const resolveRuntimeProviderCredentials = vi.fn();
+const resolveModelForRole = vi.fn();
 
 vi.mock("@/lib/auth", () => ({ auth: () => auth() }));
 vi.mock("@/lib/sabah/auth/actor", () => {
@@ -23,6 +24,7 @@ vi.mock("@/lib/glm", () => ({ callGLM: (...args: unknown[]) => callGLM(...args) 
 vi.mock("@/lib/ai/rate-limit", () => ({ checkRateLimit: (...args: unknown[]) => checkRateLimit(...args) }));
 vi.mock("@/lib/sabah/providers/admin-service", () => ({ resolveRuntimeProviderCredentials: (...args: unknown[]) => resolveRuntimeProviderCredentials(...args) }));
 vi.mock("@/lib/prisma", () => ({ prisma: {} }));
+vi.mock("@/lib/sabah/providers/roles", async (importOriginal) => ({ ...await importOriginal<typeof import("@/lib/sabah/providers/roles")>(), resolveModelForRole: (...args: unknown[]) => resolveModelForRole(...args) }));
 
 import { SabahForbiddenError } from "@/lib/sabah/auth/actor";
 import { POST } from "./route";
@@ -51,9 +53,19 @@ beforeEach(() => {
     toSabahActor.mockResolvedValue({ id: "u1", role: "ADMIN", departmentIds: [] });
     checkRateLimit.mockReturnValue({ allowed: true, remaining: 10, resetAt: Date.now() + 60_000 });
     resolveRuntimeProviderCredentials.mockResolvedValue({});
+    resolveModelForRole.mockResolvedValue({ providerKey: "zai", modelName: "glm-4.5-flash", config: {} });
 });
 
 describe("POST /api/ai/field-assist", () => {
+    it.each(["openai", "anthropic", "openai-compatible"])("uses the assigned %s provider and model with its stored key", async (provider) => {
+        delete process.env.GLM_API_KEY;
+        const credentials = { [provider]: "synthetic-stored-key" };
+        resolveRuntimeProviderCredentials.mockResolvedValue(credentials);
+        resolveModelForRole.mockResolvedValue({ providerKey: provider, modelName: "operator-assigned-model", config: {} });
+        callGLM.mockResolvedValue({ content: "Provider draft", tool_calls: [], finish_reason: "stop" });
+        expect((await POST(makeRequest(validBody))).status).toBe(200);
+        expect(callGLM).toHaveBeenCalledWith(expect.objectContaining({ provider, model: "operator-assigned-model", credentials, fallbacks: [] }));
+    });
     it("returns 401 when unauthenticated", async () => {
         auth.mockResolvedValue(null);
         const response = await POST(makeRequest(validBody));

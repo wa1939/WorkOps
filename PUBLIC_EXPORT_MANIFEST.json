@@ -1,7 +1,7 @@
 {
   "format": 1,
   "historyIncluded": false,
-  "fileCount": 1322,
+  "fileCount": 1323,
   "files": [
     {
       "path": ".dockerignore",
@@ -1053,11 +1053,11 @@
     },
     {
       "path": "src/app/api/ai/field-assist/route.test.ts",
-      "sha256": "768d1a423e5b969e1587d14d0b83747d869407f6806264156c54f1a3fcec0501"
+      "sha256": "a4b47b2af3d3140dde102c68b3beedbc041cc1ef50ed844f6d67bd867d0e4371"
     },
     {
       "path": "src/app/api/ai/field-assist/route.ts",
-      "sha256": "5680cbcae17a997c45a3907b31ac79a6a534d590d0e73aeeae2f79e9456704c3"
+      "sha256": "5b6024ba447752442910193cedfaa5d2ab0bfaf903a852b828be18c13d84b6fe"
     },
     {
       "path": "src/app/api/ai/intake/route.test.ts",
@@ -3341,7 +3341,7 @@
     },
     {
       "path": "src/lib/ai/bring-your-own-provider.test.ts",
-      "sha256": "3688976b35002077bfd4d88838721fece50598f333802e76b5ae5134528c18ab"
+      "sha256": "5b1c8f40536978c5d0b19b8e0898ac034b2dcfe6170ef1195c21baa0a92dbfcc"
     },
     {
       "path": "src/lib/ai/date-stamp.test.ts",
@@ -3401,7 +3401,7 @@
     },
     {
       "path": "src/lib/ai/provider-config.ts",
-      "sha256": "64265711c352a71776ca5c5b56f7a9560af1ac4d7494ca2167c3d5dab6dfe2dd"
+      "sha256": "1f720b5583c9581dce2a4e540d76e48e1621243322083c2a4a6fde5d809df17e"
     },
     {
       "path": "src/lib/ai/provider-resolution.test.ts",
@@ -3700,6 +3700,10 @@
       "sha256": "61d84318531863c21399b4fa3005cc3268ff17fcfd8fbb4b808d50de1970f7a1"
     },
     {
+      "path": "src/lib/glm-anthropic-observer.test.ts",
+      "sha256": "4ed60ee7b8e06bce52944c6d5381aa2d9b61ad1d701297404c8d74cd17419d8d"
+    },
+    {
       "path": "src/lib/glm-routing-diagnostics.test.ts",
       "sha256": "96f6c9a9bef78837df6573d769218c45a0e2c462260f606c35db596f58bd2eb1"
     },
@@ -3713,7 +3717,7 @@
     },
     {
       "path": "src/lib/glm.ts",
-      "sha256": "37b5d6ed57e98e6c7fa102345dd644a24f2515276d97f87216d3641aa0cc8861"
+      "sha256": "23d504c59d625a948ab64e69eab5c233f862c945e75890edb2ac87e007ada4f3"
     },
     {
       "path": "src/lib/home-preference.test.ts",

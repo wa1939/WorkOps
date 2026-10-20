@@ -659,14 +659,34 @@ export async function* callGLMStream(opts: GLMCallOptions): AsyncGenerator<GLMSt
     const { observe, emitStreamError } = createAttemptObserver(opts);
     const run = async function* (target: ProviderTarget): AsyncGenerator<GLMStreamChunk> {
         if (target.provider === "anthropic") {
+            let iterator: AsyncGenerator<GLMStreamChunk> | undefined;
+            let responseStarted = false;
+            const normalizeError = (error: unknown) => error instanceof AnthropicTransportError
+                ? new GLMError(error.message, error.status, undefined, error.retryable)
+                : error;
             try {
-                for await (const chunk of streamAnthropic(opts, target.apiKey, target.model)) {
+                const first = await withRetry(() => observe(target, async () => {
+                    iterator = streamAnthropic(opts, target.apiKey, target.model);
+                    try { return await iterator.next(); }
+                    catch (error) { throw normalizeError(error); }
+                }), { signal: opts.signal });
+                responseStarted = true;
+                if (!first.done) {
                     emittedInAttempt = true;
-                    yield chunk;
+                    yield first.value;
+                }
+                if (iterator) {
+                    for await (const chunk of iterator) {
+                        emittedInAttempt = true;
+                        yield chunk;
+                    }
                 }
             } catch (error) {
-                if (error instanceof AnthropicTransportError) throw new GLMError(error.message, error.status, undefined, error.retryable);
-                throw error;
+                const normalized = normalizeError(error);
+                if (responseStarted) await emitStreamError(target, normalized);
+                throw normalized;
+            } finally {
+                if (iterator) await iterator.return(undefined);
             }
             return;
         }

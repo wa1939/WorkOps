@@ -1,5 +1,8 @@
 import { z } from "zod";
-import { hasConfiguredAi } from "@/lib/ai/provider-config";
+import { configuredAiTarget, hasConfiguredAi } from "@/lib/ai/provider-config";
+import { buildOperationalAiTarget } from "@/lib/ai/provider-resolution";
+import { resolveModelForRole, type ModelAssignment } from "@/lib/sabah/providers/roles";
+import { prisma } from "@/lib/prisma";
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { toSabahActor, SabahForbiddenError } from "@/lib/sabah/auth/actor";
@@ -112,9 +115,18 @@ export async function POST(request: Request) {
     ];
 
     try {
+        const defaultTarget = configuredAiTarget() ?? { providerKey: "zai" as const, modelName: "glm-4.5-flash" };
+        let assignment: ModelAssignment;
+        try {
+            assignment = await resolveModelForRole("CHAT", prisma, { defaultTarget });
+        } catch (error) {
+            if (error instanceof Error && error.name === "InvalidModelAssignmentConfigError") throw error;
+            // Preserve environment-backed operation when the optional assignment lookup is unavailable.
+            assignment = { ...defaultTarget, config: {} };
+        }
+        const target = buildOperationalAiTarget(assignment, runtimeCredentials);
         const response = await callGLM({
-            model: "glm-4.5-flash",
-            credentials: runtimeCredentials,
+            ...target,
             messages,
             temperature: 0.4,
             max_tokens: MAX_PROPOSAL_TOKENS,

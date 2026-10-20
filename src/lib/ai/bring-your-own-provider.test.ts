@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { callGLM, callGLMText } from "@/lib/glm";
 import { buildOperationalAiTarget } from "./provider-resolution";
+import { hasConfiguredAi } from "./provider-config";
 
 const completion = () => new Response(JSON.stringify({ choices: [{ message: { content: "Configured provider answer" }, finish_reason: "stop" }] }), { status: 200 });
 function configure(provider: string, model: string) {
@@ -13,6 +14,11 @@ function configure(provider: string, model: string) {
 afterEach(() => { vi.unstubAllEnvs(); vi.unstubAllGlobals(); });
 
 describe("bring your own AI provider", () => {
+    it("does not hide an enabled stored provider when the deployment default has no key", () => {
+        configure("openai", "default-model");
+        vi.stubEnv("AI_API_KEY", ""); vi.stubEnv("OPENAI_API_KEY", "");
+        expect(hasConfiguredAi({ anthropic: "synthetic-stored-claude-key" })).toBe(true);
+    });
     it("uses the configured OpenAI model for shared text helpers without a GLM key", async () => {
         configure("openai", "operator-selected-model");
         const fetcher = vi.fn().mockImplementation(completion); vi.stubGlobal("fetch", fetcher);

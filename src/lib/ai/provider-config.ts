@@ -44,7 +44,10 @@ export function environmentCredential(provider: AiProviderId): string | undefine
 }
 
 export function hasConfiguredAi(credentials: Partial<Record<AiProviderId, string>> = {}): boolean {
+    // This is an availability preflight, not model selection. A saved CHAT
+    // assignment may intentionally override the deployment's default provider.
+    if (AI_PROVIDERS.some(provider => Boolean(credentials[provider]))) return true;
     const selected = process.env.AI_PROVIDER?.trim();
     if (selected) return isAiProvider(selected) && Boolean(credentials[selected] || environmentCredential(selected));
-    return Boolean(process.env.GLM_API_KEY || process.env.NUHA_API_KEY || Object.values(credentials).some(Boolean));
+    return Boolean(process.env.GLM_API_KEY || process.env.NUHA_API_KEY);
 }
